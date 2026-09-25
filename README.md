@@ -3,13 +3,13 @@
 One instruction file for every AI coding agent in your project. Run this in the project directory:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/xuancongwen/agentinit/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/xuancongwen/agentinit/master/install.sh | bash
 ```
 
 Four prompts follow. Enter accepts each default; `-y` skips them all:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/xuancongwen/agentinit/main/install.sh | bash -s -- -y
+curl -fsSL https://raw.githubusercontent.com/xuancongwen/agentinit/master/install.sh | bash -s -- -y
 ```
 
 | Prompt | Default | Flag |

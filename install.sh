@@ -2,7 +2,7 @@
 # agentinit: generate AGENTS.md (single source of truth for AI coding agents)
 # plus CLAUDE.md and GEMINI.md pointers that defer to it.
 #
-#   curl -fsSL https://raw.githubusercontent.com/xuancongwen/agentinit/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/xuancongwen/agentinit/master/install.sh | bash
 #
 # Re-running replaces only the block between the agentinit markers in AGENTS.md.
 set -euo pipefail
