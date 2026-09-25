@@ -1,0 +1,1 @@
+- Never commit directly to `{{DEFAULT_BRANCH}}`. Branch per task (`<type>/<short-slug>`, e.g. `fix/null-config`), open a pull request for every merge into `{{DEFAULT_BRANCH}}`, and do not merge your own PR unless told to.
