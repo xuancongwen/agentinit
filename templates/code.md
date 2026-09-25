@@ -1,11 +1,11 @@
 ## Code
-- Read the surrounding code first and match its style, idioms, and structure. Consistency beats preference.
-- Do the simplest thing that works. No speculative abstractions, options, or flexibility (YAGNI).
-- DRY, but extract on the third repetition, not the first. A little duplication beats the wrong abstraction.
-- Names carry meaning; code should read without comments. Comment only *why* (intent, trade-offs, gotchas), never *what*. Delete stale comments.
-- Document public APIs and non-obvious decisions. Never restate a signature in prose.
-- Small units with one responsibility. Explicit, typed errors at boundaries; no silent catch-alls.
-- Prefer the standard library. Justify every new dependency and pin it through the lockfile.
-- Validate input at boundaries, parameterize queries, and never log secrets or commit credentials.
-- Test behavior, not implementation. Every bug fix starts with a failing test. Tests are fast, deterministic, and isolated.
-- Stay in scope: do not change behavior, public APIs, or formatting the task did not ask for.
+- Match the surrounding code's style, idioms, and structure. Consistency beats preference.
+- Simplest thing that works. No speculative abstraction or configurability (YAGNI).
+- DRY, but extract on the third repetition, not the first. Duplication beats the wrong abstraction.
+- Names carry meaning; code reads without comments. Comment *why* (intent, trade-offs, gotchas), never *what*. Delete stale comments.
+- Document public APIs and non-obvious decisions; never restate a signature.
+- Small units, one responsibility. Explicit errors at boundaries; no silent catch-alls.
+- Standard library first. Justify every new dependency; pin it in the lockfile.
+- Validate at boundaries, parameterize queries, never log secrets.
+- Test behavior, not implementation. Bug fixes start with a failing test. Tests are fast, deterministic, isolated.
+- Stay in scope: no behavior, API, or formatting changes the task did not ask for.

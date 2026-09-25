@@ -19,8 +19,8 @@ run -y -C "$p" --attribution no --branches yes --default-branch main
 has "$p/AGENTS.md" '^### Go' "Go detected"
 has "$p/AGENTS.md" '^### Python' "Python detected"
 lacks "$p/AGENTS.md" '^### JavaScript' "node_modules pruned"
-has "$p/AGENTS.md" 'Do not add AI attribution' "attribution off"
-has "$p/AGENTS.md" 'pull request for every merge into `main`' "branch workflow"
+has "$p/AGENTS.md" 'No AI attribution' "attribution off"
+has "$p/AGENTS.md" 'PR for every merge into `main`' "branch workflow"
 has "$p/CLAUDE.md" '^@AGENTS.md$' "CLAUDE.md imports AGENTS.md"
 has "$p/GEMINI.md" 'AGENTS.md' "GEMINI.md points at AGENTS.md"
 
@@ -31,7 +31,7 @@ run -y -C "$p" --attribution yes --branches no --langs rust,shell
 has "$p/AGENTS.md" 'Purpose: Widgets' "Project edit preserved"
 has "$p/AGENTS.md" 'Trailing custom note' "content after end marker preserved"
 has "$p/AGENTS.md" 'Co-Authored-By' "attribution on"
-has "$p/AGENTS.md" 'Do not create branches' "branch workflow off"
+has "$p/AGENTS.md" 'no branches or PRs unless asked' "branch workflow off"
 has "$p/AGENTS.md" '^### Rust' "explicit langs applied"
 lacks "$p/AGENTS.md" '^### Go' "old langs removed"
 [ "$(grep -c 'aipair:begin' "$p/AGENTS.md")" = 1 ] || fail "duplicate begin marker"; ok

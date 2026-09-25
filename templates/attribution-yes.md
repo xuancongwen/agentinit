@@ -1,1 +1,1 @@
-- Attribute your work: add a `Co-Authored-By: <agent name> <agent email>` trailer to every commit you author and note AI assistance in PR descriptions.
+- Add a `Co-Authored-By: <agent> <email>` trailer to every commit you author; note AI assistance in PR descriptions.

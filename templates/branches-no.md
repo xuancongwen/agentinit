@@ -1,1 +1,1 @@
-- Commit on the current branch. Do not create branches or pull requests unless asked.
+- Commit on the current branch; no branches or PRs unless asked.

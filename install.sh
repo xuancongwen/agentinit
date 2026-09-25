@@ -75,42 +75,42 @@ die() { log "$*"; exit 1; }
 tpl() {
   case "$1" in
     attribution-no) cat <<'AIPAIR_TPL'
-- Do not add AI attribution (`Co-Authored-By` trailers, "Generated with" footers, or similar) to commits, PRs, or code.
+- No AI attribution (`Co-Authored-By` trailers, "Generated with" footers) in commits, PRs, or code.
 AIPAIR_TPL
     ;;
     attribution-yes) cat <<'AIPAIR_TPL'
-- Attribute your work: add a `Co-Authored-By: <agent name> <agent email>` trailer to every commit you author and note AI assistance in PR descriptions.
+- Add a `Co-Authored-By: <agent> <email>` trailer to every commit you author; note AI assistance in PR descriptions.
 AIPAIR_TPL
     ;;
     branches-no) cat <<'AIPAIR_TPL'
-- Commit on the current branch. Do not create branches or pull requests unless asked.
+- Commit on the current branch; no branches or PRs unless asked.
 AIPAIR_TPL
     ;;
     branches-yes) cat <<'AIPAIR_TPL'
-- Never commit directly to `{{DEFAULT_BRANCH}}`. Branch per task (`<type>/<short-slug>`, e.g. `fix/null-config`), open a pull request for every merge into `{{DEFAULT_BRANCH}}`, and do not merge your own PR unless told to.
+- Never commit to `{{DEFAULT_BRANCH}}` directly. Branch per task (`fix/null-config`), open a PR for every merge into `{{DEFAULT_BRANCH}}`, and do not merge it yourself unless told to.
 AIPAIR_TPL
     ;;
     code) cat <<'AIPAIR_TPL'
 ## Code
-- Read the surrounding code first and match its style, idioms, and structure. Consistency beats preference.
-- Do the simplest thing that works. No speculative abstractions, options, or flexibility (YAGNI).
-- DRY, but extract on the third repetition, not the first. A little duplication beats the wrong abstraction.
-- Names carry meaning; code should read without comments. Comment only *why* (intent, trade-offs, gotchas), never *what*. Delete stale comments.
-- Document public APIs and non-obvious decisions. Never restate a signature in prose.
-- Small units with one responsibility. Explicit, typed errors at boundaries; no silent catch-alls.
-- Prefer the standard library. Justify every new dependency and pin it through the lockfile.
-- Validate input at boundaries, parameterize queries, and never log secrets or commit credentials.
-- Test behavior, not implementation. Every bug fix starts with a failing test. Tests are fast, deterministic, and isolated.
-- Stay in scope: do not change behavior, public APIs, or formatting the task did not ask for.
+- Match the surrounding code's style, idioms, and structure. Consistency beats preference.
+- Simplest thing that works. No speculative abstraction or configurability (YAGNI).
+- DRY, but extract on the third repetition, not the first. Duplication beats the wrong abstraction.
+- Names carry meaning; code reads without comments. Comment *why* (intent, trade-offs, gotchas), never *what*. Delete stale comments.
+- Document public APIs and non-obvious decisions; never restate a signature.
+- Small units, one responsibility. Explicit errors at boundaries; no silent catch-alls.
+- Standard library first. Justify every new dependency; pin it in the lockfile.
+- Validate at boundaries, parameterize queries, never log secrets.
+- Test behavior, not implementation. Bug fixes start with a failing test. Tests are fast, deterministic, isolated.
+- Stay in scope: no behavior, API, or formatting changes the task did not ask for.
 AIPAIR_TPL
     ;;
     head) cat <<'AIPAIR_TPL'
 # AGENTS.md
 
-Instructions for AI coding agents. This file is the single source of truth: `CLAUDE.md` and `GEMINI.md` defer to it, and Codex, Antigravity, Grok Build, Cursor, and Copilot read it directly.
+Single source of truth for AI coding agents. `CLAUDE.md` and `GEMINI.md` defer to it.
 
 ## Project
-<!-- Agents read this first. Keep it current: purpose, layout, and the exact commands to build, test, and run. -->
+<!-- Agents read this first: purpose, layout, exact build/test/run commands. -->
 - Purpose: TODO
 - Build: `TODO`
 - Test: `TODO`
@@ -120,176 +120,172 @@ AIPAIR_TPL
     ;;
     lang/c) cat <<'AIPAIR_TPL'
 ### C
-- Use the project's standard (C11 default). Build with `-Wall -Wextra -Werror`; zero warnings.
-- Check every return value. Every allocation has exactly one owner and a matching free on all paths.
-- Fixed-width ints from `<stdint.h>`, `const` and `static` by default, `size_t` for sizes.
+- C11 unless the project says otherwise; `-Wall -Wextra -Werror`, zero warnings.
+- Check every return value. One owner per allocation, freed on every path.
+- `<stdint.h>` fixed-width ints, `size_t` for sizes, `const` and `static` by default.
 - Bounded string functions only (`snprintf`, `strnlen`); never `gets`, `strcpy`, `sprintf`.
-- Headers declare, sources define; include guards or `#pragma once`.
-- Run under `-fsanitize=address,undefined` in tests. Frameworks: Unity, cmocka, or Check.
+- Headers declare, sources define; `#pragma once`. Tests run under `-fsanitize=address,undefined`.
 AIPAIR_TPL
     ;;
     lang/cpp) cat <<'AIPAIR_TPL'
 ### C++
-- C++17 or later per project. RAII everywhere; `std::unique_ptr` by default, `shared_ptr` only for real shared ownership, no raw `new`/`delete`.
-- Follow the C++ Core Guidelines: `const`/`constexpr` by default, `explicit` single-arg constructors, `override`/`final`, rule of zero.
-- Prefer `std::` algorithms, `string_view`, `span`, `optional`, and `variant` over raw pointers and sentinels.
-- clang-format and clang-tidy clean; sanitizers in CI; no `using namespace` in headers.
-- Tests: GoogleTest or Catch2. Build: CMake with presets.
+- C++17+; RAII everywhere. `unique_ptr` by default, `shared_ptr` only for true shared ownership, no raw `new`/`delete`.
+- Core Guidelines: `const`/`constexpr` by default, `explicit` constructors, `override`, rule of zero.
+- `std::` algorithms, `string_view`, `span`, `optional`, `variant` over raw pointers and sentinels.
+- clang-format and clang-tidy clean; no `using namespace` in headers; sanitizers in CI.
+- Tests: GoogleTest or Catch2. Build: CMake presets.
 AIPAIR_TPL
     ;;
     lang/csharp) cat <<'AIPAIR_TPL'
 ### C#
-- Current LTS .NET. `dotnet format` clean; nullable reference types enabled with all warnings fixed.
-- `async` end-to-end with `Async` suffix and `CancellationToken`; never `.Result` or `.Wait()`.
-- Records for data, `IReadOnly*` collections in public APIs, `using` declarations for `IDisposable`.
+- Current LTS .NET; `dotnet format` clean; nullable enabled with all warnings fixed.
+- `async` end to end, `Async` suffix, `CancellationToken`; never `.Result` or `.Wait()`.
+- Records for data, `IReadOnly*` in public APIs, `using` declarations for `IDisposable`.
 - Constructor injection; LINQ for queries, loops for side effects.
-- Tests: xUnit with FluentAssertions; `dotnet test` must pass.
+- Tests: xUnit with FluentAssertions; `dotnet test` passes.
 AIPAIR_TPL
     ;;
     lang/dart) cat <<'AIPAIR_TPL'
 ### Dart
-- `dart format` and `dart analyze` clean against the project's `analysis_options.yaml`.
-- `final` by default, `const` wherever possible; sound null safety with no `!` unless proven.
+- `dart format` and `dart analyze` clean against `analysis_options.yaml`.
+- `final` by default, `const` where possible; no `!` unless proven non-null.
 - Flutter: small widgets, no logic in `build`, state via the project's chosen solution.
-- Tests: `dart test` / `flutter test`; widget tests for UI, unit tests for logic.
+- Tests: `dart test` / `flutter test`.
 AIPAIR_TPL
     ;;
     lang/elixir) cat <<'AIPAIR_TPL'
 ### Elixir
-- `mix format` and `mix credo --strict` clean; `@spec` on public functions, Dialyzer passes.
-- Pattern match in function heads; `|>` pipelines for transformations; `with` for happy paths; tagged tuples `{:ok, _}`/`{:error, _}`.
-- Let it crash: supervise processes instead of defensive `try/rescue`.
-- Tests: ExUnit with `async: true` where safe.
+- `mix format` and `mix credo --strict` clean; `@spec` on public functions; Dialyzer passes.
+- Pattern match in function heads; `|>` pipelines; `with` for happy paths; `{:ok, _}`/`{:error, _}`.
+- Let it crash: supervise instead of defensive `try/rescue`.
+- Tests: ExUnit, `async: true` where safe.
 AIPAIR_TPL
     ;;
     lang/go) cat <<'AIPAIR_TPL'
 ### Go
-- `gofmt`/`goimports` and `go vet` clean; `golangci-lint` if configured.
-- Handle every error; wrap with `fmt.Errorf("doing x: %w", err)`; no `panic` outside `main` and init.
-- Accept interfaces, return structs; keep interfaces small; `context.Context` is the first parameter.
-- No package-level mutable state; zero values should be useful; avoid `init()`.
-- Table-driven tests with `t.Run`; `go test -race ./...` must pass.
+- `gofmt`, `go vet`, and `golangci-lint` (if configured) clean.
+- Handle every error; wrap with `fmt.Errorf("doing x: %w", err)`; no `panic` outside `main`.
+- Accept interfaces, return structs; small interfaces; `context.Context` first.
+- No package-level mutable state or `init()`; useful zero values.
+- Table-driven tests with `t.Run`; `go test -race ./...` passes.
 AIPAIR_TPL
     ;;
     lang/java) cat <<'AIPAIR_TPL'
 ### Java
-- Java 17+ per project. Formatted and checked by Spotless or Checkstyle; zero warnings.
-- Immutability first: `final` fields, records for data, `Optional` only as a return type.
-- Interfaces and composition over inheritance; unchecked exceptions in new APIs; never swallow an exception.
-- Streams for transformations, loops for side effects; try-with-resources for every `AutoCloseable`.
-- Tests: JUnit 5 with AssertJ; `mvn verify` or `gradle check` must pass.
+- Java 17+; Spotless or Checkstyle clean, zero warnings.
+- `final` fields, records for data, `Optional` only as a return type.
+- Composition over inheritance; unchecked exceptions in new APIs; never swallow one.
+- Streams for transforms, loops for side effects; try-with-resources for every `AutoCloseable`.
+- Tests: JUnit 5 with AssertJ; `mvn verify` or `gradle check` passes.
 AIPAIR_TPL
     ;;
     lang/javascript) cat <<'AIPAIR_TPL'
 ### JavaScript
-- ES modules; `const` by default, `let` when reassigned, never `var`; strict equality only.
-- `async`/`await` over promise chains; every rejection handled; no floating promises.
-- Prettier and ESLint clean; respect the project's package manager and lockfile.
-- Tests: Vitest, Jest, or `node:test`. Test behavior, not markup.
+- ES modules; `const` by default, `let` when reassigned, never `var`; `===` only.
+- `async`/`await` over promise chains; every rejection handled.
+- Prettier and ESLint clean; respect the package manager and lockfile.
+- Tests: Vitest, Jest, or `node:test`; test behavior, not markup.
 AIPAIR_TPL
     ;;
     lang/kotlin) cat <<'AIPAIR_TPL'
 ### Kotlin
-- Kotlin coding conventions; ktlint and detekt clean. No `!!`: use `?.`, `?:`, or `requireNotNull` with a message.
-- `val` over `var`; data classes for data, sealed classes for state, exhaustive `when`.
-- Coroutines with structured concurrency; never `GlobalScope`; suspend functions over callbacks.
+- ktlint and detekt clean. No `!!`: use `?.`, `?:`, or `requireNotNull` with a message.
+- `val` over `var`; data classes, sealed classes for state, exhaustive `when`.
+- Structured concurrency; never `GlobalScope`; suspend functions over callbacks.
 - Tests: JUnit 5 or Kotest with MockK.
 AIPAIR_TPL
     ;;
     lang/objective-c) cat <<'AIPAIR_TPL'
 ### Objective-C
-- ARC only. Properties `nonatomic`; `copy` for `NSString` and blocks; `weak` for delegates and to break cycles.
-- Wrap headers in `NS_ASSUME_NONNULL_BEGIN`/`END`; use lightweight generics and `instancetype`.
-- Literals (`@[]`, `@{}`, `@()`), dot syntax for properties, `NSError **` for failures; no exceptions for control flow.
-- Capture `weakSelf` in escaping blocks; no `+load` side effects.
-- clang-format clean; tests in XCTest.
+- ARC. Properties `nonatomic`; `copy` for `NSString` and blocks; `weak` for delegates.
+- `NS_ASSUME_NONNULL_BEGIN`/`END` in every header; lightweight generics; `instancetype`.
+- Literals, dot syntax, `NSError **` for failures; no exceptions for control flow.
+- `weakSelf` in escaping blocks; no `+load` side effects. clang-format clean; XCTest.
 AIPAIR_TPL
     ;;
     lang/php) cat <<'AIPAIR_TPL'
 ### PHP
-- PHP 8.2+ with `declare(strict_types=1)`; PSR-12 via PHP-CS-Fixer; PHPStan or Psalm at the project's level.
+- PHP 8.2+, `declare(strict_types=1)`; PSR-12 via PHP-CS-Fixer; PHPStan or Psalm passes.
 - Type every parameter, return, and property; readonly properties and enums over constants.
-- Composer PSR-4 autoloading; never `@` suppression, `extract()`, or `eval()`.
-- Prepared statements only; escape all output.
-- Tests: PHPUnit or Pest.
+- PSR-4 autoloading; never `@`, `extract()`, or `eval()`.
+- Prepared statements only; escape all output. Tests: PHPUnit or Pest.
 AIPAIR_TPL
     ;;
     lang/python) cat <<'AIPAIR_TPL'
 ### Python
-- Python 3.10+ per project. `ruff format` and `ruff check` clean; type hints on all public functions; pyright or mypy passes.
-- PEP 8 and PEP 20. `pathlib` over `os.path`, f-strings, dataclasses or pydantic for records, context managers for resources.
-- No mutable default arguments; no bare `except:`; no wildcard imports.
-- Virtual environment with pinned dependencies (`uv`, `pip-tools`, or `poetry`) declared in `pyproject.toml`.
+- `ruff format` and `ruff check` clean; type hints on public functions; pyright or mypy passes.
+- `pathlib`, f-strings, dataclasses or pydantic for records, context managers for resources.
+- No mutable default arguments, bare `except:`, or wildcard imports.
+- Pinned deps in `pyproject.toml` via `uv`, `pip-tools`, or `poetry`.
 - Tests: pytest with fixtures and `parametrize`.
 AIPAIR_TPL
     ;;
     lang/ruby) cat <<'AIPAIR_TPL'
 ### Ruby
-- Ruby Style Guide via RuboCop; `# frozen_string_literal: true`; 2-space indent, `snake_case` methods, `CamelCase` classes.
-- `each`/`map`/`select` over `for`; guard clauses over nested `if`; keyword arguments for more than two parameters.
-- Raise specific exceptions; never `rescue Exception`; no monkey-patching core classes.
-- Bundler with a committed `Gemfile.lock`.
-- Tests: RSpec or Minitest, one behavior per example.
+- RuboCop clean; `# frozen_string_literal: true`; `snake_case` methods, `CamelCase` classes.
+- `each`/`map`/`select` over `for`; guard clauses over nested `if`; keyword args beyond two parameters.
+- Raise specific exceptions; never `rescue Exception`; no core-class monkey patches.
+- Bundler with committed `Gemfile.lock`. Tests: RSpec or Minitest, one behavior per example.
 AIPAIR_TPL
     ;;
     lang/rust) cat <<'AIPAIR_TPL'
 ### Rust
-- `cargo fmt` and `cargo clippy --all-targets -- -D warnings` must pass.
-- No `unwrap`/`expect` outside tests and provably infallible cases. Propagate with `?`; `thiserror` for libraries, `anyhow` at binaries.
-- Borrow before cloning; `&str`/`&[T]` in parameters; iterators over index loops; `impl Trait` over boxing where possible.
-- Every `unsafe` block carries a `// SAFETY:` comment stating the upheld invariants.
-- Unit tests in `#[cfg(test)]` modules, integration tests in `tests/`, doc examples that compile.
+- `cargo fmt` and `cargo clippy --all-targets -- -D warnings` pass.
+- No `unwrap`/`expect` outside tests. Propagate with `?`; `thiserror` in libraries, `anyhow` in binaries.
+- Borrow before cloning; `&str`/`&[T]` parameters; iterators over index loops.
+- Every `unsafe` block has a `// SAFETY:` comment stating its invariants.
+- Unit tests in `#[cfg(test)]`, integration tests in `tests/`, doc examples that compile.
 AIPAIR_TPL
     ;;
     lang/shell) cat <<'AIPAIR_TPL'
 ### Shell
-- `#!/usr/bin/env bash` with `set -euo pipefail`; POSIX `sh` only when portability demands it.
-- Quote every expansion; `[[ ]]`, `$(...)`, arrays, and `local` in bash; never parse `ls`.
-- shellcheck and shfmt clean; check dependencies with `command -v` and fail with a clear message.
-- `mktemp` plus `trap` for cleanup; prompts read from `/dev/tty` when stdin may be piped.
+- `#!/usr/bin/env bash`, `set -euo pipefail`; POSIX `sh` only when portability demands.
+- Quote every expansion; `[[ ]]`, `$(...)`, arrays, `local`; never parse `ls`.
+- shellcheck and shfmt clean; check dependencies with `command -v`.
+- `mktemp` with `trap` cleanup; read prompts from `/dev/tty` when stdin may be piped.
 AIPAIR_TPL
     ;;
     lang/sql) cat <<'AIPAIR_TPL'
 ### SQL
-- Uppercase keywords, `snake_case` identifiers, one clause per line; explicit column lists, never `SELECT *` in code.
-- Migrations are forward-only and never edited after merge; make them idempotent where possible.
-- Index what you filter and join on; `EXPLAIN` new queries against large tables.
-- Parameterized queries only; never interpolate input.
+- Uppercase keywords, `snake_case` identifiers, one clause per line, explicit column lists.
+- Migrations are forward-only, never edited after merge, idempotent where possible.
+- Index what you filter and join on; `EXPLAIN` new queries on large tables.
+- Parameterized queries only.
 AIPAIR_TPL
     ;;
     lang/swift) cat <<'AIPAIR_TPL'
 ### Swift
-- Swift API Design Guidelines; SwiftFormat and SwiftLint clean.
-- `let` over `var`; structs and enums by default; protocols for abstraction, not class hierarchies.
-- No `!`, `try!`, or `as!` outside tests. Use `guard let`, `throws`, and `Result`.
+- API Design Guidelines; SwiftFormat and SwiftLint clean.
+- `let` over `var`; structs and enums by default; protocols over class hierarchies.
+- No `!`, `try!`, or `as!` outside tests; use `guard let`, `throws`, `Result`.
 - Structured concurrency (`async`/`await`, actors); `@MainActor` for UI.
 - Tests: Swift Testing or XCTest; dependencies via SwiftPM.
 AIPAIR_TPL
     ;;
     lang/typescript) cat <<'AIPAIR_TPL'
 ### TypeScript
-- `strict: true`. No `any` (use `unknown` and narrow); no non-null `!` or `as` casts without a justifying comment.
-- Discriminated unions over optional fields; `readonly` where possible; derive types (`typeof`, `satisfies`, `as const`) instead of duplicating.
-- Export types alongside the values they describe; avoid enums in favor of union literals.
+- `strict: true`. No `any` (use `unknown` and narrow); no `!` or `as` without a justifying comment.
+- Discriminated unions over optional fields; `readonly` where possible; derive types (`typeof`, `satisfies`, `as const`) rather than duplicate.
+- Union literals over enums; export types beside the values they describe.
 - Otherwise as JavaScript: ES modules, `const` by default, `async`/`await` with every rejection handled, Prettier and ESLint clean.
 AIPAIR_TPL
     ;;
     pointer-claude) cat <<'AIPAIR_TPL'
-AGENTS.md is the single source of truth for agent instructions in this repo. Edit it, not this file.
+Edit AGENTS.md, not this file.
 
 @AGENTS.md
 AIPAIR_TPL
     ;;
     pointer-gemini) cat <<'AIPAIR_TPL'
-Read and follow `AGENTS.md` in this directory. It is the single source of truth for agent instructions; edit it, not this file.
+Follow `AGENTS.md` in this directory; edit it, not this file.
 AIPAIR_TPL
     ;;
     workflow) cat <<'AIPAIR_TPL'
 ## Workflow
-- Restate the task before starting; ask when ambiguous. Prefer small, reviewable changes over large ones.
-- Run the project's formatter, linter, and tests before declaring work done. Report failures verbatim; never claim success you did not verify.
-- One logical change per commit. Imperative subject under 50 characters; body explains *why*. Never commit secrets, build artifacts, or unrelated changes.
-- Never rewrite shared history or run destructive git commands (`push --force`, `reset --hard`, `clean -f`) without explicit approval.
+- Ask when the task is ambiguous. Prefer small, reviewable changes.
+- Run formatter, linter, and tests before declaring done. Report failures verbatim; never claim unverified success.
+- One logical change per commit: imperative subject under 50 chars, body says *why*. No secrets, build artifacts, or unrelated changes.
+- No history rewrites or destructive git (`push --force`, `reset --hard`, `clean -f`) without explicit approval.
 AIPAIR_TPL
     ;;
     *) die "unknown template: $1" ;;
@@ -364,8 +360,8 @@ detect_default_branch() {
 # --- generation --------------------------------------------------------------
 managed_block() {
   local id
-  printf '%s v%s. Re-running aipair replaces only this block; edit outside the markers. -->\n' \
-    "$BEGIN_MARK generated by aipair" "$AIPAIR_VERSION"
+  printf '%s v%s. Re-running aipair replaces this block; edit outside the markers. -->\n' \
+    "$BEGIN_MARK" "$AIPAIR_VERSION"
   tpl workflow
   tpl "branches-$BRANCHES" | sed "s|{{DEFAULT_BRANCH}}|$DEFAULT_BRANCH|g"
   tpl "attribution-$ATTRIBUTION"

@@ -1,1 +1,1 @@
-- Do not add AI attribution (`Co-Authored-By` trailers, "Generated with" footers, or similar) to commits, PRs, or code.
+- No AI attribution (`Co-Authored-By` trailers, "Generated with" footers) in commits, PRs, or code.

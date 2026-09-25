@@ -1,5 +1,5 @@
 ## Workflow
-- Restate the task before starting; ask when ambiguous. Prefer small, reviewable changes over large ones.
-- Run the project's formatter, linter, and tests before declaring work done. Report failures verbatim; never claim success you did not verify.
-- One logical change per commit. Imperative subject under 50 characters; body explains *why*. Never commit secrets, build artifacts, or unrelated changes.
-- Never rewrite shared history or run destructive git commands (`push --force`, `reset --hard`, `clean -f`) without explicit approval.
+- Ask when the task is ambiguous. Prefer small, reviewable changes.
+- Run formatter, linter, and tests before declaring done. Report failures verbatim; never claim unverified success.
+- One logical change per commit: imperative subject under 50 chars, body says *why*. No secrets, build artifacts, or unrelated changes.
+- No history rewrites or destructive git (`push --force`, `reset --hard`, `clean -f`) without explicit approval.

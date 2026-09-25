@@ -1,9 +1,9 @@
 # AGENTS.md
 
-Instructions for AI coding agents. This file is the single source of truth: `CLAUDE.md` and `GEMINI.md` defer to it, and Codex, Antigravity, Grok Build, Cursor, and Copilot read it directly.
+Single source of truth for AI coding agents. `CLAUDE.md` and `GEMINI.md` defer to it.
 
 ## Project
-<!-- Agents read this first. Keep it current: purpose, layout, and the exact commands to build, test, and run. -->
+<!-- Agents read this first: purpose, layout, exact build/test/run commands. -->
 - Purpose: TODO
 - Build: `TODO`
 - Test: `TODO`
