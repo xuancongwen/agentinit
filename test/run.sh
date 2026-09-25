@@ -10,7 +10,7 @@ ok() { n=$((n + 1)); }
 fail() { echo "FAIL: $*" >&2; exit 1; }
 has() { grep -q -- "$2" "$1" || fail "$3"; ok; }
 lacks() { ! grep -q -- "$2" "$1" || fail "$3"; ok; }
-run() { bash "$script" "$@" </dev/null 2>"$tmp/log" || { cat "$tmp/log" >&2; fail "aipair exited non-zero: $*"; }; }
+run() { bash "$script" "$@" </dev/null 2>"$tmp/log" || { cat "$tmp/log" >&2; fail "agentinit exited non-zero: $*"; }; }
 
 # Fresh project with auto-detection
 p="$tmp/p1"; mkdir -p "$p/src" "$p/node_modules/x"
@@ -34,8 +34,8 @@ has "$p/AGENTS.md" 'Co-Authored-By' "attribution on"
 has "$p/AGENTS.md" 'no branches or PRs unless asked' "branch workflow off"
 has "$p/AGENTS.md" '^### Rust' "explicit langs applied"
 lacks "$p/AGENTS.md" '^### Go' "old langs removed"
-[ "$(grep -c 'aipair:begin' "$p/AGENTS.md")" = 1 ] || fail "duplicate begin marker"; ok
-[ "$(grep -c 'aipair:end' "$p/AGENTS.md")" = 1 ] || fail "duplicate end marker"; ok
+[ "$(grep -c 'agentinit:begin' "$p/AGENTS.md")" = 1 ] || fail "duplicate begin marker"; ok
+[ "$(grep -c 'agentinit:end' "$p/AGENTS.md")" = 1 ] || fail "duplicate end marker"; ok
 
 # Existing files: foreign AGENTS.md is appended to, foreign pointers are left alone
 p="$tmp/p2"; mkdir -p "$p"
@@ -43,7 +43,7 @@ printf '# Mine\n\nKeep this.\n' >"$p/AGENTS.md"
 printf 'my own claude rules\n' >"$p/CLAUDE.md"
 run -y -C "$p" --langs none
 has "$p/AGENTS.md" '^# Mine' "foreign AGENTS.md kept"
-has "$p/AGENTS.md" 'aipair:begin' "block appended"
+has "$p/AGENTS.md" 'agentinit:begin' "block appended"
 lacks "$p/AGENTS.md" '^## Languages' "no languages section when none"
 has "$p/CLAUDE.md" 'my own claude rules' "foreign CLAUDE.md untouched"
 lacks "$p/CLAUDE.md" '@AGENTS.md' "foreign CLAUDE.md not overwritten"

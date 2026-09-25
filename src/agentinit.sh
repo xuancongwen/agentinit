@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# aipair: generate AGENTS.md (single source of truth for AI coding agents)
+# agentinit: generate AGENTS.md (single source of truth for AI coding agents)
 # plus CLAUDE.md and GEMINI.md pointers that defer to it.
 #
-#   curl -fsSL https://raw.githubusercontent.com/xuancongwen/aipair/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/xuancongwen/agentinit/main/install.sh | bash
 #
-# Re-running replaces only the block between the aipair markers in AGENTS.md.
+# Re-running replaces only the block between the agentinit markers in AGENTS.md.
 set -euo pipefail
 
-AIPAIR_VERSION="0.1.0"
-BEGIN_MARK='<!-- aipair:begin'
-END_MARK='<!-- aipair:end -->'
+AGENTINIT_VERSION="0.1.0"
+BEGIN_MARK='<!-- agentinit:begin'
+END_MARK='<!-- agentinit:end -->'
 
 # id|Display name|file patterns that mark a project as using the language
 LANG_TABLE='
@@ -45,9 +45,9 @@ STDOUT=0
 
 usage() {
   cat <<USAGE
-aipair v$AIPAIR_VERSION - generate AGENTS.md, CLAUDE.md, and GEMINI.md for a project.
+agentinit v$AGENTINIT_VERSION - generate AGENTS.md, CLAUDE.md, and GEMINI.md for a project.
 
-Usage: aipair [options]
+Usage: agentinit [options]
 
   -C, --dir DIR             project directory (default: .)
   -y, --yes                 non-interactive; use flags and defaults
@@ -65,14 +65,14 @@ Prompts read from the terminal even when piped through curl; pass -y to skip the
 USAGE
 }
 
-log() { printf 'aipair: %s\n' "$*" >&2; }
+log() { printf 'agentinit: %s\n' "$*" >&2; }
 die() { log "$*"; exit 1; }
 
 # --- templates ---------------------------------------------------------------
 # Development mode reads ./templates; build.sh replaces this region with the
 # embedded copies that make install.sh self-contained.
 # @@TPL_BEGIN@@
-TPL_DIR="${AIPAIR_TEMPLATES:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/templates}"
+TPL_DIR="${AGENTINIT_TEMPLATES:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/templates}"
 tpl() { cat "$TPL_DIR/$1.md"; }
 # @@TPL_END@@
 
@@ -144,8 +144,8 @@ detect_default_branch() {
 # --- generation --------------------------------------------------------------
 managed_block() {
   local id
-  printf '%s v%s. Re-running aipair replaces this block; edit outside the markers. -->\n' \
-    "$BEGIN_MARK" "$AIPAIR_VERSION"
+  printf '%s v%s. Re-running agentinit replaces this block; edit outside the markers. -->\n' \
+    "$BEGIN_MARK" "$AGENTINIT_VERSION"
   tpl workflow
   tpl "branches-$BRANCHES" | sed "s|{{DEFAULT_BRANCH}}|$DEFAULT_BRANCH|g"
   tpl "attribution-$ATTRIBUTION"
@@ -217,14 +217,14 @@ while [ $# -gt 0 ]; do
     --stdout) STDOUT=1 ;;
     --force) FORCE=1 ;;
     -h|--help) usage; exit 0 ;;
-    -V|--version) echo "aipair $AIPAIR_VERSION"; exit 0 ;;
+    -V|--version) echo "agentinit $AGENTINIT_VERSION"; exit 0 ;;
     *) die "unknown option '$1' (try --help)" ;;
   esac
   shift
 done
 
 [ -d "$TARGET" ] || die "not a directory: $TARGET"
-[ "$STDOUT" = 1 ] || log "v$AIPAIR_VERSION in $(cd "$TARGET" && pwd)"
+[ "$STDOUT" = 1 ] || log "v$AGENTINIT_VERSION in $(cd "$TARGET" && pwd)"
 
 [ -n "$ATTRIBUTION" ] || ATTRIBUTION=$(yn "$(ask "Keep AI attribution (Co-Authored-By) in commits? (y/n)" no)")
 [ -n "$BRANCHES" ] || BRANCHES=$(yn "$(ask "Work on branches and open a PR before every merge? (y/n)" yes)")

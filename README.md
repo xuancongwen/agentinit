@@ -1,15 +1,15 @@
-# aipair
+# agentinit
 
 One instruction file for every AI coding agent in your project. Run this in the project directory:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/xuancongwen/aipair/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/xuancongwen/agentinit/main/install.sh | bash
 ```
 
 Four prompts follow. Enter accepts each default; `-y` skips them all:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/xuancongwen/aipair/main/install.sh | bash -s -- -y
+curl -fsSL https://raw.githubusercontent.com/xuancongwen/agentinit/main/install.sh | bash -s -- -y
 ```
 
 | Prompt | Default | Flag |
@@ -35,7 +35,7 @@ Flags combine with `-y`. Afterwards, fill in the **Project** section at the top 
 
 ## Re-running
 
-The generated part sits between `<!-- aipair:begin -->` and `<!-- aipair:end -->`. Re-running replaces only that block; everything you write outside it survives. An existing `AGENTS.md` without markers gets the block appended. Existing `CLAUDE.md` or `GEMINI.md` files that do not reference `AGENTS.md` are left alone unless you pass `--force`, which keeps a `*.bak`.
+The generated part sits between `<!-- agentinit:begin -->` and `<!-- agentinit:end -->`. Re-running replaces only that block; everything you write outside it survives. An existing `AGENTS.md` without markers gets the block appended. Existing `CLAUDE.md` or `GEMINI.md` files that do not reference `AGENTS.md` are left alone unless you pass `--force`, which keeps a `*.bak`.
 
 ## Options
 
@@ -56,9 +56,9 @@ Prompts read from the terminal even when piped through curl.
 ## Developing
 
 ```
-src/aipair.sh   the script; reads templates/ directly
+src/agentinit.sh   the script; reads templates/ directly
 templates/      one Markdown file per section and per language
-build.sh        embeds templates/ into src/aipair.sh to produce install.sh
+build.sh        embeds templates/ into src/agentinit.sh to produce install.sh
 install.sh      generated, self-contained; do not edit by hand
 test/run.sh     end-to-end tests
 ```
