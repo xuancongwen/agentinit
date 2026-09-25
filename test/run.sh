@@ -51,11 +51,18 @@ run -y -C "$p" --langs none --force
 has "$p/CLAUDE.md" '^@AGENTS.md$' "--force overwrites"
 has "$p/CLAUDE.md.bak" 'my own claude rules' "--force backs up"
 
-# --stdout writes nothing
+# --stdout writes nothing; default branch falls back to master outside git
 p="$tmp/p3"; mkdir -p "$p"
 bash "$script" -y -C "$p" --langs c --stdout </dev/null >"$tmp/out"
 [ ! -e "$p/AGENTS.md" ] || fail "--stdout wrote a file"; ok
 has "$tmp/out" '^### C$' "--stdout prints C section"
+has "$tmp/out" 'merge into `master`' "default branch is master"
+
+# Default branch is detected from an existing git repo
+p="$tmp/p4"; mkdir -p "$p"; git -C "$p" init -q -b trunk
+git -C "$p" -c user.name=t -c user.email=t@t commit -q --allow-empty -m init
+bash "$script" -y -C "$p" --langs none --stdout </dev/null >"$tmp/out"
+has "$tmp/out" 'merge into `trunk`' "default branch detected from git"
 
 # Every language id renders a heading
 for id in $(bash "$script" --list-langs); do

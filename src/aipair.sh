@@ -53,7 +53,7 @@ Usage: aipair [options]
   -y, --yes                 non-interactive; use flags and defaults
       --attribution yes|no  keep AI attribution in commits (default: no)
       --branches yes|no     branch per task, PR before every merge (default: yes)
-      --default-branch NAME protected branch name (default: detected, else main)
+      --default-branch NAME protected branch name (default: detected, else master)
       --langs LIST          comma-separated language ids, "auto" (default), or "none"
       --list-langs          print supported language ids and exit
       --stdout              print the generated AGENTS.md and write nothing
@@ -133,13 +133,12 @@ detect_default_branch() {
   local b
   b=$(git -C "$TARGET" symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null || true)
   if [ -n "$b" ]; then printf '%s' "${b#origin/}"; return; fi
-  for b in main master trunk; do
+  for b in master main trunk; do
     if git -C "$TARGET" show-ref --verify --quiet "refs/heads/$b" 2>/dev/null; then
       printf '%s' "$b"; return
     fi
   done
-  b=$(git config --get init.defaultBranch 2>/dev/null || true)
-  printf '%s' "${b:-main}"
+  printf 'master'
 }
 
 # --- generation --------------------------------------------------------------
