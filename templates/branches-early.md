@@ -1,0 +1,2 @@
+- Initial development: commit and push straight to `{{DEFAULT_BRANCH}}`; no PRs until told otherwise. `git pull --rebase` before pushing; never force-push.
+- Parallel agents: one worktree per task on a short-lived branch (`git worktree add ../<repo>-<task> -b <task>`), never a shared checkout. When done, rebase onto `{{DEFAULT_BRANCH}}`, `git push origin HEAD:{{DEFAULT_BRANCH}}`, then `git worktree remove` it and delete the branch.

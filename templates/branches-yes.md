@@ -1,1 +1,2 @@
 - Never commit to `{{DEFAULT_BRANCH}}` directly. Branch per task (`fix/null-config`), open a PR for every merge into `{{DEFAULT_BRANCH}}`, and do not merge it yourself unless told to.
+- Parallel agents: one worktree per task (`git worktree add ../<repo>-<task> -b <task>`), never a shared checkout. Never switch branches or edit files in another agent's worktree; `git worktree remove` yours once its PR merges.

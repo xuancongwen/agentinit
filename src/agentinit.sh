@@ -52,8 +52,10 @@ Usage: agentinit [options]
   -C, --dir DIR             project directory (default: .)
   -y, --yes                 non-interactive; use flags and defaults
       --attribution yes|no  keep AI attribution in commits (default: no)
-      --branches yes|no     branch per task, PR before every merge (default: yes)
-      --default-branch NAME protected branch name (default: detected, else master)
+      --branches MODE       yes: branch per task, PR before every merge (default)
+                            early: commit and push straight to the default branch
+                            no: commit on the current branch, no PRs
+      --default-branch NAME default branch name (default: detected, else master)
       --langs LIST          comma-separated language ids, "auto" (default), or "none"
       --list-langs          print supported language ids and exit
       --stdout              print the generated AGENTS.md and write nothing
@@ -82,6 +84,13 @@ yn() {
     y|yes|true|1) echo yes ;;
     n|no|false|0) echo no ;;
     *) die "expected yes or no, got '$1'" ;;
+  esac
+}
+
+branch_mode() {
+  case "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" in
+    e|early) echo early ;;
+    *) yn "$1" ;;
   esac
 }
 
@@ -207,8 +216,8 @@ while [ $# -gt 0 ]; do
     -y|--yes) ASSUME_YES=1 ;;
     --attribution) need_arg "$@"; ATTRIBUTION=$(yn "$2"); shift ;;
     --attribution=*) ATTRIBUTION=$(yn "${1#*=}") ;;
-    --branches) need_arg "$@"; BRANCHES=$(yn "$2"); shift ;;
-    --branches=*) BRANCHES=$(yn "${1#*=}") ;;
+    --branches) need_arg "$@"; BRANCHES=$(branch_mode "$2"); shift ;;
+    --branches=*) BRANCHES=$(branch_mode "${1#*=}") ;;
     --default-branch) need_arg "$@"; DEFAULT_BRANCH="$2"; shift ;;
     --default-branch=*) DEFAULT_BRANCH="${1#*=}" ;;
     --langs) need_arg "$@"; LANGS="$2"; shift ;;
@@ -227,10 +236,10 @@ done
 [ "$STDOUT" = 1 ] || log "v$AGENTINIT_VERSION in $(cd "$TARGET" && pwd)"
 
 [ -n "$ATTRIBUTION" ] || ATTRIBUTION=$(yn "$(ask "Keep AI attribution (Co-Authored-By) in commits? (y/n)" no)")
-[ -n "$BRANCHES" ] || BRANCHES=$(yn "$(ask "Work on branches and open a PR before every merge? (y/n)" yes)")
+[ -n "$BRANCHES" ] || BRANCHES=$(branch_mode "$(ask "Branch workflow: yes (branch + PR per task), early (push straight to the default branch during initial development), no (current branch only)" yes)")
 if [ -z "$DEFAULT_BRANCH" ]; then
   DEFAULT_BRANCH=$(detect_default_branch)
-  [ "$BRANCHES" = yes ] && DEFAULT_BRANCH=$(ask "Protected default branch" "$DEFAULT_BRANCH")
+  [ "$BRANCHES" = no ] || DEFAULT_BRANCH=$(ask "Default branch" "$DEFAULT_BRANCH")
 fi
 if [ "$LANGS" = auto ]; then
   LANGS=$(detect_langs)

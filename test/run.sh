@@ -21,6 +21,7 @@ has "$p/AGENTS.md" '^### Python' "Python detected"
 lacks "$p/AGENTS.md" '^### JavaScript' "node_modules pruned"
 has "$p/AGENTS.md" 'No AI attribution' "attribution off"
 has "$p/AGENTS.md" 'PR for every merge into `main`' "branch workflow"
+has "$p/AGENTS.md" 'git worktree add' "worktrees for parallel agents"
 has "$p/CLAUDE.md" '^@AGENTS.md$' "CLAUDE.md imports AGENTS.md"
 has "$p/GEMINI.md" 'AGENTS.md' "GEMINI.md points at AGENTS.md"
 
@@ -34,6 +35,7 @@ has "$p/AGENTS.md" 'Co-Authored-By' "attribution on"
 has "$p/AGENTS.md" 'no branches or PRs unless asked' "branch workflow off"
 has "$p/AGENTS.md" '^### Rust' "explicit langs applied"
 lacks "$p/AGENTS.md" '^### Go' "old langs removed"
+lacks "$p/AGENTS.md" 'git worktree' "no worktrees without branches"
 [ "$(grep -c 'agentinit:begin' "$p/AGENTS.md")" = 1 ] || fail "duplicate begin marker"; ok
 [ "$(grep -c 'agentinit:end' "$p/AGENTS.md")" = 1 ] || fail "duplicate end marker"; ok
 
@@ -63,6 +65,12 @@ p="$tmp/p4"; mkdir -p "$p"; git -C "$p" init -q -b trunk
 git -C "$p" -c user.name=t -c user.email=t@t commit -q --allow-empty -m init
 bash "$script" -y -C "$p" --langs none --stdout </dev/null >"$tmp/out"
 has "$tmp/out" 'merge into `trunk`' "default branch detected from git"
+
+# Early mode pushes straight to the default branch, still with worktrees
+bash "$script" -y -C "$p" --branches early --langs none --stdout </dev/null >"$tmp/out"
+has "$tmp/out" 'push straight to `trunk`' "early mode targets default branch"
+has "$tmp/out" 'HEAD:trunk' "early mode worktrees push to default branch"
+lacks "$tmp/out" 'Never commit to' "early mode drops PR rule"
 
 # Every language id renders a heading
 for id in $(bash "$script" --list-langs); do

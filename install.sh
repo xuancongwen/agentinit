@@ -52,8 +52,10 @@ Usage: agentinit [options]
   -C, --dir DIR             project directory (default: .)
   -y, --yes                 non-interactive; use flags and defaults
       --attribution yes|no  keep AI attribution in commits (default: no)
-      --branches yes|no     branch per task, PR before every merge (default: yes)
-      --default-branch NAME protected branch name (default: detected, else master)
+      --branches MODE       yes: branch per task, PR before every merge (default)
+                            early: commit and push straight to the default branch
+                            no: commit on the current branch, no PRs
+      --default-branch NAME default branch name (default: detected, else master)
       --langs LIST          comma-separated language ids, "auto" (default), or "none"
       --list-langs          print supported language ids and exit
       --stdout              print the generated AGENTS.md and write nothing
@@ -82,12 +84,18 @@ AGENTINIT_TPL
 - Add a `Co-Authored-By: <agent> <email>` trailer to every commit you author; note AI assistance in PR descriptions.
 AGENTINIT_TPL
     ;;
+    branches-early) cat <<'AGENTINIT_TPL'
+- Initial development: commit and push straight to `{{DEFAULT_BRANCH}}`; no PRs until told otherwise. `git pull --rebase` before pushing; never force-push.
+- Parallel agents: one worktree per task on a short-lived branch (`git worktree add ../<repo>-<task> -b <task>`), never a shared checkout. When done, rebase onto `{{DEFAULT_BRANCH}}`, `git push origin HEAD:{{DEFAULT_BRANCH}}`, then `git worktree remove` it and delete the branch.
+AGENTINIT_TPL
+    ;;
     branches-no) cat <<'AGENTINIT_TPL'
 - Commit on the current branch; no branches or PRs unless asked.
 AGENTINIT_TPL
     ;;
     branches-yes) cat <<'AGENTINIT_TPL'
 - Never commit to `{{DEFAULT_BRANCH}}` directly. Branch per task (`fix/null-config`), open a PR for every merge into `{{DEFAULT_BRANCH}}`, and do not merge it yourself unless told to.
+- Parallel agents: one worktree per task (`git worktree add ../<repo>-<task> -b <task>`), never a shared checkout. Never switch branches or edit files in another agent's worktree; `git worktree remove` yours once its PR merges.
 AGENTINIT_TPL
     ;;
     code) cat <<'AGENTINIT_TPL'
@@ -301,6 +309,13 @@ yn() {
   esac
 }
 
+branch_mode() {
+  case "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" in
+    e|early) echo early ;;
+    *) yn "$1" ;;
+  esac
+}
+
 # ask PROMPT DEFAULT -> prints the answer. Reads /dev/tty when stdin is a pipe.
 ask() {
   local reply=""
@@ -423,8 +438,8 @@ while [ $# -gt 0 ]; do
     -y|--yes) ASSUME_YES=1 ;;
     --attribution) need_arg "$@"; ATTRIBUTION=$(yn "$2"); shift ;;
     --attribution=*) ATTRIBUTION=$(yn "${1#*=}") ;;
-    --branches) need_arg "$@"; BRANCHES=$(yn "$2"); shift ;;
-    --branches=*) BRANCHES=$(yn "${1#*=}") ;;
+    --branches) need_arg "$@"; BRANCHES=$(branch_mode "$2"); shift ;;
+    --branches=*) BRANCHES=$(branch_mode "${1#*=}") ;;
     --default-branch) need_arg "$@"; DEFAULT_BRANCH="$2"; shift ;;
     --default-branch=*) DEFAULT_BRANCH="${1#*=}" ;;
     --langs) need_arg "$@"; LANGS="$2"; shift ;;
@@ -443,10 +458,10 @@ done
 [ "$STDOUT" = 1 ] || log "v$AGENTINIT_VERSION in $(cd "$TARGET" && pwd)"
 
 [ -n "$ATTRIBUTION" ] || ATTRIBUTION=$(yn "$(ask "Keep AI attribution (Co-Authored-By) in commits? (y/n)" no)")
-[ -n "$BRANCHES" ] || BRANCHES=$(yn "$(ask "Work on branches and open a PR before every merge? (y/n)" yes)")
+[ -n "$BRANCHES" ] || BRANCHES=$(branch_mode "$(ask "Branch workflow: yes (branch + PR per task), early (push straight to the default branch during initial development), no (current branch only)" yes)")
 if [ -z "$DEFAULT_BRANCH" ]; then
   DEFAULT_BRANCH=$(detect_default_branch)
-  [ "$BRANCHES" = yes ] && DEFAULT_BRANCH=$(ask "Protected default branch" "$DEFAULT_BRANCH")
+  [ "$BRANCHES" = no ] || DEFAULT_BRANCH=$(ask "Default branch" "$DEFAULT_BRANCH")
 fi
 if [ "$LANGS" = auto ]; then
   LANGS=$(detect_langs)
