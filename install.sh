@@ -415,12 +415,16 @@ write_agents() {
 # write_pointer FILE TEMPLATE OWNERSHIP_PATTERN HINT
 write_pointer() {
   local f="$TARGET/$1"
+  if [ -L "$f" ] && [ "$(readlink "$f")" = AGENTS.md ]; then
+    log "$1 is a symlink to AGENTS.md"; return
+  fi
   if [ -f "$f" ]; then
     if grep -q "$3" "$f"; then
       log "$1 already defers to AGENTS.md"; return
     fi
     if [ "$FORCE" = 1 ]; then
-      cp "$f" "$f.bak"; log "backed up $1 to $1.bak"
+      # rm first so a symlinked file is replaced, not written through.
+      cp "$f" "$f.bak"; rm -f "$f"; log "backed up $1 to $1.bak"
     else
       log "$1 exists and does not reference AGENTS.md; add '$4' to it or re-run with --force"
       return
@@ -428,6 +432,20 @@ write_pointer() {
   fi
   tpl "$2" >"$f"
   log "created $1"
+}
+
+# Cursor and Windsurf read AGENTS.md natively; their own rule files load
+# alongside it, so point out any that could contradict it.
+check_other_rules() {
+  local f
+  for f in .cursorrules .cursor/rules .windsurfrules .windsurf/rules .devin/rules; do
+    [ -e "$TARGET/$f" ] && log "$f also loads alongside AGENTS.md; move its rules into AGENTS.md (outside the markers) or remove it"
+  done
+  # Windsurf truncates any single rule file, AGENTS.md included, past 12,000 characters.
+  if [ "$(wc -c <"$TARGET/AGENTS.md")" -gt 12000 ]; then
+    log "AGENTS.md exceeds 12,000 characters; Windsurf truncates it"
+  fi
+  return 0
 }
 
 # --- main --------------------------------------------------------------------
@@ -479,4 +497,5 @@ fi
 write_agents
 write_pointer CLAUDE.md pointer-claude '^@AGENTS\.md' '@AGENTS.md'
 write_pointer GEMINI.md pointer-gemini 'AGENTS\.md' 'Read and follow AGENTS.md'
+check_other_rules
 log "done. Fill in the Project section of AGENTS.md; it is what agents read first."

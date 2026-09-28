@@ -53,6 +53,16 @@ run -y -C "$p" --langs none --force
 has "$p/CLAUDE.md" '^@AGENTS.md$' "--force overwrites"
 has "$p/CLAUDE.md.bak" 'my own claude rules' "--force backs up"
 
+# Symlinked pointers are respected and never written through
+p="$tmp/p6"; mkdir -p "$p"; ln -s AGENTS.md "$p/CLAUDE.md"; ln -s AGENTS.md "$p/GEMINI.md"
+run -y -C "$p" --langs none --force
+[ -L "$p/CLAUDE.md" ] || fail "CLAUDE.md symlink kept"; ok
+has "$p/AGENTS.md" 'agentinit:begin' "AGENTS.md not overwritten through symlink"
+p="$tmp/p7"; mkdir -p "$p"; echo 'other rules' >"$p/OTHER.md"; ln -s OTHER.md "$p/CLAUDE.md"
+run -y -C "$p" --langs none --force
+[ ! -L "$p/CLAUDE.md" ] || fail "foreign symlink replaced"; ok
+has "$p/OTHER.md" 'other rules' "--force does not write through foreign symlink"
+
 # --stdout writes nothing; default branch falls back to master outside git
 p="$tmp/p3"; mkdir -p "$p"
 bash "$script" -y -C "$p" --langs c --stdout </dev/null >"$tmp/out"
@@ -71,6 +81,19 @@ bash "$script" -y -C "$p" --branches early --langs none --stdout </dev/null >"$t
 has "$tmp/out" 'push straight to `trunk`' "early mode targets default branch"
 has "$tmp/out" 'HEAD:trunk' "early mode worktrees push to default branch"
 lacks "$tmp/out" 'Never commit to' "early mode drops PR rule"
+
+# Cursor and Windsurf rule files that load alongside AGENTS.md are flagged
+p="$tmp/p5"; mkdir -p "$p/.cursor/rules" "$p/.windsurf/rules"
+touch "$p/.cursorrules" "$p/.windsurfrules"
+run -y -C "$p" --langs none
+for f in .cursorrules .cursor/rules .windsurfrules .windsurf/rules; do
+  has "$tmp/log" "$f also loads alongside AGENTS.md" "$f flagged"
+done
+lacks "$tmp/log" '.devin/rules' "absent rule dirs not flagged"
+lacks "$tmp/log" '12,000' "short AGENTS.md not flagged"
+printf '%12001s\n' x >>"$p/AGENTS.md"
+run -y -C "$p" --langs none
+has "$tmp/log" 'exceeds 12,000 characters' "oversized AGENTS.md flagged"
 
 # Every language id renders a heading
 for id in $(bash "$script" --list-langs); do

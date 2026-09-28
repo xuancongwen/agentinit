@@ -37,11 +37,20 @@ Worktrees let several agents work on one repository at once: each gets its own c
 
 | File | Read by | Content |
 |---|---|---|
-| `AGENTS.md` | Codex, Antigravity, Grok Build, Cursor, Copilot, Jules, Claude Code (via import) | **Single source of truth** |
+| `AGENTS.md` | Codex, Antigravity, Grok Build, Cursor, Windsurf, Copilot, Jules, Claude Code (via import) | **Single source of truth** |
 | `CLAUDE.md` | Claude Code | `@AGENTS.md` import |
 | `GEMINI.md` | Gemini CLI, Antigravity | Pointer to `AGENTS.md` |
 
 `AGENTS.md` is the cross-tool standard, and Grok Build and Antigravity read it natively, so there is no `GROK.md` or lowercase `agents.md` (which would collide with `AGENTS.md` on macOS and Windows).
+
+Cursor and Windsurf apply a root `AGENTS.md` to every session, so agentinit writes none of their own rule files. Those files load alongside `AGENTS.md`, so agentinit flags any it finds, to fold into `AGENTS.md` or delete:
+
+| Tool | Rule files | Notes |
+|---|---|---|
+| Cursor | `.cursor/rules/*.mdc`, legacy `.cursorrules` | `.mdc` frontmatter: `description`, `globs`, `alwaysApply`; plain `.md` in `.cursor/rules` is ignored |
+| Windsurf | `.devin/rules/*.md`, `.windsurf/rules/*.md`, legacy `.windsurfrules`; global `~/.codeium/windsurf/memories/global_rules.md` | frontmatter `trigger: always_on\|manual\|model_decision\|glob`; 12,000 characters per file, so agentinit warns when `AGENTS.md` exceeds that |
+
+Both also read nested `AGENTS.md` files, scoped to their directory.
 
 `AGENTS.md` holds a **Project** stub, a **Workflow** section (verify before claiming done, small commits, no destructive git, your branch, worktree, and attribution choices), a **Code** section (idioms, YAGNI, DRY without premature abstraction, self-documenting code, comments for *why*, testing, dependencies, security, scope), and four to five bullets per language. Supported: C, C++, Rust, Go, Ruby, Python, JavaScript, TypeScript, Swift, Objective-C, Java, Kotlin, C#, PHP, Shell, SQL, Dart, Elixir. A Rust plus TypeScript project comes to about 50 lines.
 
