@@ -20,9 +20,10 @@ has "$p/AGENTS.md" '^### Go' "Go detected"
 has "$p/AGENTS.md" '^### Python' "Python detected"
 lacks "$p/AGENTS.md" '^### JavaScript' "node_modules pruned"
 has "$p/AGENTS.md" 'No AI attribution' "attribution off"
-has "$p/AGENTS.md" 'PR for every merge into `main`' "branch workflow"
+has "$p/AGENTS.md" 'PR into `main`' "branch workflow"
 has "$p/AGENTS.md" 'git worktree add' "worktree per task"
 has "$p/AGENTS.md" 'Never work in the main checkout' "main checkout off limits"
+has "$p/AGENTS.md" 'GitHub issue' "tracker defaults to GitHub issues"
 has "$p/CLAUDE.md" '^@AGENTS.md$' "CLAUDE.md imports AGENTS.md"
 has "$p/GEMINI.md" 'AGENTS.md' "GEMINI.md points at AGENTS.md"
 
@@ -69,13 +70,13 @@ p="$tmp/p3"; mkdir -p "$p"
 bash "$script" -y -C "$p" --langs c --stdout </dev/null >"$tmp/out"
 [ ! -e "$p/AGENTS.md" ] || fail "--stdout wrote a file"; ok
 has "$tmp/out" '^### C$' "--stdout prints C section"
-has "$tmp/out" 'merge into `master`' "default branch is master"
+has "$tmp/out" 'PR into `master`' "default branch is master"
 
 # Default branch is detected from an existing git repo
 p="$tmp/p4"; mkdir -p "$p"; git -C "$p" init -q -b trunk
 git -C "$p" -c user.name=t -c user.email=t@t commit -q --allow-empty -m init
 bash "$script" -y -C "$p" --langs none --stdout </dev/null >"$tmp/out"
-has "$tmp/out" 'merge into `trunk`' "default branch detected from git"
+has "$tmp/out" 'PR into `trunk`' "default branch detected from git"
 
 # Early mode pushes straight to the default branch, still with worktrees
 bash "$script" -y -C "$p" --branches early --langs none --stdout </dev/null >"$tmp/out"
@@ -83,6 +84,14 @@ has "$tmp/out" 'pushed straight to `trunk`' "early mode targets default branch"
 has "$tmp/out" 'HEAD:trunk' "early mode worktrees push to default branch"
 lacks "$tmp/out" 'Never commit to' "early mode drops PR rule"
 has "$tmp/out" 'Never work in the main checkout' "early mode keeps main checkout off limits"
+
+# Tracker: a custom MCP-backed tracker by name, or none
+bash "$script" -y -C "$p" --tracker Trackstar --langs none --stdout </dev/null >"$tmp/out"
+has "$tmp/out" 'in Trackstar via its MCP' "custom tracker named"
+lacks "$tmp/out" 'GitHub issue' "custom tracker replaces GitHub"
+bash "$script" -y -C "$p" --tracker none --langs none --stdout </dev/null >"$tmp/out"
+lacks "$tmp/out" '## Task tracking' "tracker none omits section"
+! bash "$script" -y -C "$p" --tracker 'a|b' --stdout </dev/null >/dev/null 2>&1 || fail "invalid tracker name accepted"; ok
 
 # Cursor and Windsurf rule files that load alongside AGENTS.md are flagged
 p="$tmp/p5"; mkdir -p "$p/.cursor/rules" "$p/.windsurf/rules"

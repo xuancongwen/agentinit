@@ -38,6 +38,7 @@ TARGET="."
 ASSUME_YES=0
 ATTRIBUTION=""
 BRANCHES=""
+TRACKER=""
 LANGS="auto"
 DEFAULT_BRANCH=""
 FORCE=0
@@ -56,6 +57,8 @@ Usage: agentinit [options]
                             early: commit and push straight to the default branch
                             no: commit on the current branch, no PRs
       --default-branch NAME default branch name (default: detected, else master)
+      --tracker NAME        where agents track task status: github (issues, default),
+                            none, or the name of another tracker's MCP server
       --langs LIST          comma-separated language ids, "auto" (default), or "none"
       --list-langs          print supported language ids and exit
       --stdout              print the generated AGENTS.md and write nothing
@@ -91,6 +94,17 @@ branch_mode() {
   case "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" in
     e|early) echo early ;;
     *) yn "$1" ;;
+  esac
+}
+
+# tracker NAME -> github, none, or the name as given for an MCP-backed tracker
+tracker() {
+  case "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" in
+    github|gh|github-issues|issues) echo github ;;
+    none|no|n|false|0) echo none ;;
+    *)
+      printf '%s' "$1" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9 ._-]*$' || die "invalid tracker name '$1'"
+      printf '%s' "$1" ;;
   esac
 }
 
@@ -159,6 +173,11 @@ managed_block() {
   tpl "branches-$BRANCHES" | sed "s|{{DEFAULT_BRANCH}}|$DEFAULT_BRANCH|g"
   tpl "attribution-$ATTRIBUTION"
   printf '\n'
+  case "$TRACKER" in
+    none) ;;
+    github) tpl tracker-github; printf '\n' ;;
+    *) tpl tracker-mcp | sed "s|{{TRACKER}}|$TRACKER|g"; printf '\n' ;;
+  esac
   tpl code
   if [ "$LANGS" != none ] && [ -n "$LANGS" ]; then
     printf '\n## Languages\n'
@@ -236,6 +255,8 @@ while [ $# -gt 0 ]; do
     --attribution=*) ATTRIBUTION=$(yn "${1#*=}") ;;
     --branches) need_arg "$@"; BRANCHES=$(branch_mode "$2"); shift ;;
     --branches=*) BRANCHES=$(branch_mode "${1#*=}") ;;
+    --tracker) need_arg "$@"; TRACKER=$(tracker "$2"); shift ;;
+    --tracker=*) TRACKER=$(tracker "${1#*=}") ;;
     --default-branch) need_arg "$@"; DEFAULT_BRANCH="$2"; shift ;;
     --default-branch=*) DEFAULT_BRANCH="${1#*=}" ;;
     --langs) need_arg "$@"; LANGS="$2"; shift ;;
@@ -259,6 +280,7 @@ if [ -z "$DEFAULT_BRANCH" ]; then
   DEFAULT_BRANCH=$(detect_default_branch)
   [ "$BRANCHES" = no ] || DEFAULT_BRANCH=$(ask "Default branch" "$DEFAULT_BRANCH")
 fi
+[ -n "$TRACKER" ] || TRACKER=$(tracker "$(ask "Task tracker agents keep updated: github (issues), none, or another tracker's MCP name (e.g. Trackstar)" github)")
 if [ "$LANGS" = auto ]; then
   LANGS=$(detect_langs)
   LANGS=$(ask "Languages (comma-separated ids, 'none' to skip; --list-langs for all)" "${LANGS:-none}")

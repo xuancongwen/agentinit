@@ -38,6 +38,7 @@ TARGET="."
 ASSUME_YES=0
 ATTRIBUTION=""
 BRANCHES=""
+TRACKER=""
 LANGS="auto"
 DEFAULT_BRANCH=""
 FORCE=0
@@ -56,6 +57,8 @@ Usage: agentinit [options]
                             early: commit and push straight to the default branch
                             no: commit on the current branch, no PRs
       --default-branch NAME default branch name (default: detected, else master)
+      --tracker NAME        where agents track task status: github (issues, default),
+                            none, or the name of another tracker's MCP server
       --langs LIST          comma-separated language ids, "auto" (default), or "none"
       --list-langs          print supported language ids and exit
       --stdout              print the generated AGENTS.md and write nothing
@@ -85,9 +88,9 @@ AGENTINIT_TPL
 AGENTINIT_TPL
     ;;
     branches-early) cat <<'AGENTINIT_TPL'
-- Never work in the main checkout (the repo's original directory); it belongs to the user and stays on `{{DEFAULT_BRANCH}}`. Every task, even a solo one, gets its own worktree: `git worktree add ../<repo>-<task> -b <task>`, then do all edits, builds, and commits there. If `git rev-parse --git-dir` and `git rev-parse --git-common-dir` print the same path, you are in the main checkout: stop and create a worktree before changing anything.
-- Initial development: no PRs until told otherwise; finished work is pushed straight to `{{DEFAULT_BRANCH}}` from your worktree. Run `git fetch` and `git rebase origin/{{DEFAULT_BRANCH}}`, then `git push origin HEAD:{{DEFAULT_BRANCH}}`; never force-push.
-- Never switch branches or edit files in another agent's worktree. Once pushed, `git worktree remove` yours and delete its branch.
+- Never work in the main checkout; it is the user's and stays on `{{DEFAULT_BRANCH}}`. Do every task, even a solo one, in its own worktree: `git worktree add ../<repo>-<task> -b <task>`. If `git rev-parse --git-dir` lacks `/worktrees/`, you are in the main checkout: create a worktree before changing anything.
+- Initial development: no PRs until told otherwise; finished work is pushed straight to `{{DEFAULT_BRANCH}}`: `git fetch && git rebase origin/{{DEFAULT_BRANCH}} && git push origin HEAD:{{DEFAULT_BRANCH}}`. Never force-push.
+- Never touch another agent's worktree. Once pushed, `git worktree remove` yours and delete its branch.
 AGENTINIT_TPL
     ;;
     branches-no) cat <<'AGENTINIT_TPL'
@@ -95,9 +98,9 @@ AGENTINIT_TPL
 AGENTINIT_TPL
     ;;
     branches-yes) cat <<'AGENTINIT_TPL'
-- Never work in the main checkout (the repo's original directory); it belongs to the user and stays on `{{DEFAULT_BRANCH}}`. Every task, even a solo one, gets its own worktree: `git worktree add ../<repo>-<task> -b <task>`, then do all edits, builds, and commits there. If `git rev-parse --git-dir` and `git rev-parse --git-common-dir` print the same path, you are in the main checkout: stop and create a worktree before changing anything.
-- Never commit to `{{DEFAULT_BRANCH}}` directly. Push your task branch (`fix/null-config`) and open a PR for every merge into `{{DEFAULT_BRANCH}}`; do not merge it yourself unless told to.
-- Never switch branches or edit files in another agent's worktree. `git worktree remove` yours and delete its branch once its PR merges.
+- Never work in the main checkout; it is the user's and stays on `{{DEFAULT_BRANCH}}`. Do every task, even a solo one, in its own worktree: `git worktree add ../<repo>-<task> -b <task>`. If `git rev-parse --git-dir` lacks `/worktrees/`, you are in the main checkout: create a worktree before changing anything.
+- Never commit to `{{DEFAULT_BRANCH}}`. Push your branch and open a PR into `{{DEFAULT_BRANCH}}`; do not merge it unless told to.
+- Never touch another agent's worktree. Once your PR merges, `git worktree remove` yours and delete its branch.
 AGENTINIT_TPL
     ;;
     code) cat <<'AGENTINIT_TPL'
@@ -290,6 +293,22 @@ AGENTINIT_TPL
 Follow `AGENTS.md` in this directory; edit it, not this file.
 AGENTINIT_TPL
     ;;
+    tracker-github) cat <<'AGENTINIT_TPL'
+## Task tracking
+- Track each task in a GitHub issue (`gh issue` or the GitHub MCP): find or open one, with the goal and how to verify it, before starting.
+- Comment as you go, not afterwards: on starting (branch, approach), on plan changes, when blocked and why, and with the PR or commit. The issue alone should show where the work stands.
+- Put `Closes #N` in the PR or commit so the issue closes when the work lands, not before.
+- If GitHub is unreachable, say so and ask; never skip tracking silently.
+AGENTINIT_TPL
+    ;;
+    tracker-mcp) cat <<'AGENTINIT_TPL'
+## Task tracking
+- Track each task in {{TRACKER}} via its MCP tools: find or create its ticket, with the goal and how to verify it, before starting.
+- Update it as you go, not afterwards: mark it started when you begin, comment on plan changes and blockers, mark it finished when the work lands, and leave acceptance to the user. The ticket alone should show where the work stands.
+- Put the ticket ID in branch names, commits, and PRs.
+- If {{TRACKER}} is unreachable, say so and ask; never skip tracking silently.
+AGENTINIT_TPL
+    ;;
     workflow) cat <<'AGENTINIT_TPL'
 ## Workflow
 - Ask when the task is ambiguous. Prefer small, reviewable changes.
@@ -315,6 +334,17 @@ branch_mode() {
   case "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" in
     e|early) echo early ;;
     *) yn "$1" ;;
+  esac
+}
+
+# tracker NAME -> github, none, or the name as given for an MCP-backed tracker
+tracker() {
+  case "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" in
+    github|gh|github-issues|issues) echo github ;;
+    none|no|n|false|0) echo none ;;
+    *)
+      printf '%s' "$1" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9 ._-]*$' || die "invalid tracker name '$1'"
+      printf '%s' "$1" ;;
   esac
 }
 
@@ -383,6 +413,11 @@ managed_block() {
   tpl "branches-$BRANCHES" | sed "s|{{DEFAULT_BRANCH}}|$DEFAULT_BRANCH|g"
   tpl "attribution-$ATTRIBUTION"
   printf '\n'
+  case "$TRACKER" in
+    none) ;;
+    github) tpl tracker-github; printf '\n' ;;
+    *) tpl tracker-mcp | sed "s|{{TRACKER}}|$TRACKER|g"; printf '\n' ;;
+  esac
   tpl code
   if [ "$LANGS" != none ] && [ -n "$LANGS" ]; then
     printf '\n## Languages\n'
@@ -460,6 +495,8 @@ while [ $# -gt 0 ]; do
     --attribution=*) ATTRIBUTION=$(yn "${1#*=}") ;;
     --branches) need_arg "$@"; BRANCHES=$(branch_mode "$2"); shift ;;
     --branches=*) BRANCHES=$(branch_mode "${1#*=}") ;;
+    --tracker) need_arg "$@"; TRACKER=$(tracker "$2"); shift ;;
+    --tracker=*) TRACKER=$(tracker "${1#*=}") ;;
     --default-branch) need_arg "$@"; DEFAULT_BRANCH="$2"; shift ;;
     --default-branch=*) DEFAULT_BRANCH="${1#*=}" ;;
     --langs) need_arg "$@"; LANGS="$2"; shift ;;
@@ -483,6 +520,7 @@ if [ -z "$DEFAULT_BRANCH" ]; then
   DEFAULT_BRANCH=$(detect_default_branch)
   [ "$BRANCHES" = no ] || DEFAULT_BRANCH=$(ask "Default branch" "$DEFAULT_BRANCH")
 fi
+[ -n "$TRACKER" ] || TRACKER=$(tracker "$(ask "Task tracker agents keep updated: github (issues), none, or another tracker's MCP name (e.g. Trackstar)" github)")
 if [ "$LANGS" = auto ]; then
   LANGS=$(detect_langs)
   LANGS=$(ask "Languages (comma-separated ids, 'none' to skip; --list-langs for all)" "${LANGS:-none}")
