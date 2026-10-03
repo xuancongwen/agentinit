@@ -85,8 +85,9 @@ AGENTINIT_TPL
 AGENTINIT_TPL
     ;;
     branches-early) cat <<'AGENTINIT_TPL'
-- Initial development: commit and push straight to `{{DEFAULT_BRANCH}}`; no PRs until told otherwise. `git pull --rebase` before pushing; never force-push.
-- Parallel agents: one worktree per task on a short-lived branch (`git worktree add ../<repo>-<task> -b <task>`), never a shared checkout. When done, rebase onto `{{DEFAULT_BRANCH}}`, `git push origin HEAD:{{DEFAULT_BRANCH}}`, then `git worktree remove` it and delete the branch.
+- Never work in the main checkout (the repo's original directory); it belongs to the user and stays on `{{DEFAULT_BRANCH}}`. Every task, even a solo one, gets its own worktree: `git worktree add ../<repo>-<task> -b <task>`, then do all edits, builds, and commits there. If `git rev-parse --git-dir` and `git rev-parse --git-common-dir` print the same path, you are in the main checkout: stop and create a worktree before changing anything.
+- Initial development: no PRs until told otherwise; finished work is pushed straight to `{{DEFAULT_BRANCH}}` from your worktree. Run `git fetch` and `git rebase origin/{{DEFAULT_BRANCH}}`, then `git push origin HEAD:{{DEFAULT_BRANCH}}`; never force-push.
+- Never switch branches or edit files in another agent's worktree. Once pushed, `git worktree remove` yours and delete its branch.
 AGENTINIT_TPL
     ;;
     branches-no) cat <<'AGENTINIT_TPL'
@@ -94,8 +95,9 @@ AGENTINIT_TPL
 AGENTINIT_TPL
     ;;
     branches-yes) cat <<'AGENTINIT_TPL'
-- Never commit to `{{DEFAULT_BRANCH}}` directly. Branch per task (`fix/null-config`), open a PR for every merge into `{{DEFAULT_BRANCH}}`, and do not merge it yourself unless told to.
-- Parallel agents: one worktree per task (`git worktree add ../<repo>-<task> -b <task>`), never a shared checkout. Never switch branches or edit files in another agent's worktree; `git worktree remove` yours once its PR merges.
+- Never work in the main checkout (the repo's original directory); it belongs to the user and stays on `{{DEFAULT_BRANCH}}`. Every task, even a solo one, gets its own worktree: `git worktree add ../<repo>-<task> -b <task>`, then do all edits, builds, and commits there. If `git rev-parse --git-dir` and `git rev-parse --git-common-dir` print the same path, you are in the main checkout: stop and create a worktree before changing anything.
+- Never commit to `{{DEFAULT_BRANCH}}` directly. Push your task branch (`fix/null-config`) and open a PR for every merge into `{{DEFAULT_BRANCH}}`; do not merge it yourself unless told to.
+- Never switch branches or edit files in another agent's worktree. `git worktree remove` yours and delete its branch once its PR merges.
 AGENTINIT_TPL
     ;;
     code) cat <<'AGENTINIT_TPL'

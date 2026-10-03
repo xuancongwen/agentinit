@@ -21,7 +21,8 @@ has "$p/AGENTS.md" '^### Python' "Python detected"
 lacks "$p/AGENTS.md" '^### JavaScript' "node_modules pruned"
 has "$p/AGENTS.md" 'No AI attribution' "attribution off"
 has "$p/AGENTS.md" 'PR for every merge into `main`' "branch workflow"
-has "$p/AGENTS.md" 'git worktree add' "worktrees for parallel agents"
+has "$p/AGENTS.md" 'git worktree add' "worktree per task"
+has "$p/AGENTS.md" 'Never work in the main checkout' "main checkout off limits"
 has "$p/CLAUDE.md" '^@AGENTS.md$' "CLAUDE.md imports AGENTS.md"
 has "$p/GEMINI.md" 'AGENTS.md' "GEMINI.md points at AGENTS.md"
 
@@ -78,9 +79,10 @@ has "$tmp/out" 'merge into `trunk`' "default branch detected from git"
 
 # Early mode pushes straight to the default branch, still with worktrees
 bash "$script" -y -C "$p" --branches early --langs none --stdout </dev/null >"$tmp/out"
-has "$tmp/out" 'push straight to `trunk`' "early mode targets default branch"
+has "$tmp/out" 'pushed straight to `trunk`' "early mode targets default branch"
 has "$tmp/out" 'HEAD:trunk' "early mode worktrees push to default branch"
 lacks "$tmp/out" 'Never commit to' "early mode drops PR rule"
+has "$tmp/out" 'Never work in the main checkout' "early mode keeps main checkout off limits"
 
 # Cursor and Windsurf rule files that load alongside AGENTS.md are flagged
 p="$tmp/p5"; mkdir -p "$p/.cursor/rules" "$p/.windsurf/rules"

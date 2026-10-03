@@ -23,15 +23,15 @@ Flags combine with `-y`. Afterwards, fill in the **Project** section at the top 
 
 ## Branch workflow
 
-| `--branches` | Agents commit to | Parallel agents |
+| `--branches` | Agents work in | Changes reach the default branch by |
 |---|---|---|
-| `yes` | a branch per task, merged by PR | one `git worktree` per task |
-| `early` | the default branch, pushed directly | one `git worktree` per task, rebased and pushed to the default branch |
-| `no` | the current branch | not covered |
+| `yes` | their own `git worktree` and branch, one per task | a PR |
+| `early` | their own `git worktree` and branch, one per task | rebasing and pushing directly |
+| `no` | the current checkout and branch | committing in place |
 
 `early` drops PR overhead during initial development. When the project needs review gates, re-run with `--branches yes`; only the managed block changes.
 
-Worktrees let several agents work on one repository at once: each gets its own checkout in a sibling directory (`../<repo>-<task>`) sharing the same `.git`, so no agent switches branches or overwrites files under another.
+With `yes` and `early`, agents never work in your main checkout, even when only one agent is running: every task starts with `git worktree add ../<repo>-<task> -b <task>` and all edits and commits happen in that sibling directory, which shares the same `.git`. Your checkout stays on the default branch and untouched, and agents never switch branches or overwrite files under one another. `AGENTS.md` also gives agents a check for whether they are in the main checkout, so one that starts there moves out before changing anything.
 
 ## What gets written
 

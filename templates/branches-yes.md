@@ -1,2 +1,3 @@
-- Never commit to `{{DEFAULT_BRANCH}}` directly. Branch per task (`fix/null-config`), open a PR for every merge into `{{DEFAULT_BRANCH}}`, and do not merge it yourself unless told to.
-- Parallel agents: one worktree per task (`git worktree add ../<repo>-<task> -b <task>`), never a shared checkout. Never switch branches or edit files in another agent's worktree; `git worktree remove` yours once its PR merges.
+- Never work in the main checkout (the repo's original directory); it belongs to the user and stays on `{{DEFAULT_BRANCH}}`. Every task, even a solo one, gets its own worktree: `git worktree add ../<repo>-<task> -b <task>`, then do all edits, builds, and commits there. If `git rev-parse --git-dir` and `git rev-parse --git-common-dir` print the same path, you are in the main checkout: stop and create a worktree before changing anything.
+- Never commit to `{{DEFAULT_BRANCH}}` directly. Push your task branch (`fix/null-config`) and open a PR for every merge into `{{DEFAULT_BRANCH}}`; do not merge it yourself unless told to.
+- Never switch branches or edit files in another agent's worktree. `git worktree remove` yours and delete its branch once its PR merges.
