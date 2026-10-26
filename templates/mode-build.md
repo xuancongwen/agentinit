@@ -1,0 +1,1 @@
+- Build mode (initial development, one agent at a time): work in the main checkout on `{{DEFAULT_BRANCH}}` and commit finished work straight to it. No worktrees, branches, or PRs, even if your harness defaults to branching first.

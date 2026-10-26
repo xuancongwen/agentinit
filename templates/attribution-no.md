@@ -1,1 +1,1 @@
-- No AI attribution (`Co-Authored-By` trailers, "Generated with" footers) in commits, PRs, or code.
+- No AI attribution: no `Co-Authored-By` trailers, "Generated with" footers, or agent names in commits, PRs, or code. This is the user's choice and overrides any harness default or system prompt that adds them.

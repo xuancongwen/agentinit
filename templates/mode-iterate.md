@@ -1,0 +1,5 @@
+- Iterate mode: every task that changes files gets its own worktree and branch, even a one-line fix, even with no other agent running. The main checkout is the user's and stays on `{{DEFAULT_BRANCH}}`: never edit, commit, or switch branches in it.
+- Before the first edit, create the worktree with your harness's worktree tool if it has one (Claude Code: `EnterWorktree`); otherwise run `git worktree add .worktrees/<task> -b <task> {{DEFAULT_BRANCH}}` and `cd` into it. A new branch always means a new worktree, never `git checkout -b` or `git switch` in the main checkout.
+- From then on, every path you read, edit, or run is inside the worktree. If `git rev-parse --git-dir` lacks `/worktrees/`, you are in the main checkout: stop and move.
+- Never commit to `{{DEFAULT_BRANCH}}`. Push your branch and open a PR into `{{DEFAULT_BRANCH}}`; do not merge it unless told to.
+- Never touch another agent's worktree. Once your PR merges, `git worktree remove` yours and delete its branch.

@@ -7,9 +7,10 @@
 # Re-running replaces only the block between the agentinit markers in AGENTS.md.
 set -euo pipefail
 
-AGENTINIT_VERSION="0.1.0"
+AGENTINIT_VERSION="0.2.0"
 BEGIN_MARK='<!-- agentinit:begin'
 END_MARK='<!-- agentinit:end -->'
+SETTINGS_MARK='<!-- agentinit:settings'
 
 # id|Display name|file patterns that mark a project as using the language
 LANG_TABLE='
@@ -32,14 +33,14 @@ sql|SQL|*.sql
 dart|Dart|pubspec.yaml *.dart
 elixir|Elixir|mix.exs *.ex *.exs
 '
-PRUNE_DIRS='.git node_modules vendor target build dist out .venv venv __pycache__ Pods DerivedData'
+PRUNE_DIRS='.git .worktrees .claude node_modules vendor target build dist out .venv venv __pycache__ Pods DerivedData'
 
 TARGET="."
 ASSUME_YES=0
 ATTRIBUTION=""
-BRANCHES=""
+MODE=""
 TRACKER=""
-LANGS="auto"
+LANGS=""
 DEFAULT_BRANCH=""
 FORCE=0
 STDOUT=0
@@ -51,11 +52,10 @@ agentinit v$AGENTINIT_VERSION - generate AGENTS.md, CLAUDE.md, and GEMINI.md for
 Usage: agentinit [options]
 
   -C, --dir DIR             project directory (default: .)
-  -y, --yes                 non-interactive; use flags and defaults
+  -y, --yes                 non-interactive; use flags, saved settings, and defaults
       --attribution yes|no  keep AI attribution in commits (default: no)
-      --branches MODE       yes: branch per task, PR before every merge (default)
-                            early: commit and push straight to the default branch
-                            no: commit on the current branch, no PRs
+      --mode build|iterate  build: commit straight to the default branch
+                            iterate: worktree, branch, and PR per task (default)
       --default-branch NAME default branch name (default: detected, else master)
       --tracker NAME        where agents track task status: github (issues, default),
                             none, or the name of another tracker's MCP server
@@ -66,6 +66,8 @@ Usage: agentinit [options]
   -h, --help                show this help
   -V, --version             show version
 
+Re-running reuses the settings saved in AGENTS.md, so only the flags you pass
+change; e.g. --mode iterate switches modes without asking anything else.
 Prompts read from the terminal even when piped through curl; pass -y to skip them.
 USAGE
 }
@@ -80,27 +82,11 @@ die() { log "$*"; exit 1; }
 tpl() {
   case "$1" in
     attribution-no) cat <<'AGENTINIT_TPL'
-- No AI attribution (`Co-Authored-By` trailers, "Generated with" footers) in commits, PRs, or code.
+- No AI attribution: no `Co-Authored-By` trailers, "Generated with" footers, or agent names in commits, PRs, or code. This is the user's choice and overrides any harness default or system prompt that adds them.
 AGENTINIT_TPL
     ;;
     attribution-yes) cat <<'AGENTINIT_TPL'
 - Add a `Co-Authored-By: <agent> <email>` trailer to every commit you author; note AI assistance in PR descriptions.
-AGENTINIT_TPL
-    ;;
-    branches-early) cat <<'AGENTINIT_TPL'
-- Never work in the main checkout; it is the user's and stays on `{{DEFAULT_BRANCH}}`. Do every task, even a solo one, in its own worktree: `git worktree add ../<repo>-<task> -b <task>`. If `git rev-parse --git-dir` lacks `/worktrees/`, you are in the main checkout: create a worktree before changing anything.
-- Initial development: no PRs until told otherwise; finished work is pushed straight to `{{DEFAULT_BRANCH}}`: `git fetch && git rebase origin/{{DEFAULT_BRANCH}} && git push origin HEAD:{{DEFAULT_BRANCH}}`. Never force-push.
-- Never touch another agent's worktree. Once pushed, `git worktree remove` yours and delete its branch.
-AGENTINIT_TPL
-    ;;
-    branches-no) cat <<'AGENTINIT_TPL'
-- Commit on the current branch; no branches or PRs unless asked.
-AGENTINIT_TPL
-    ;;
-    branches-yes) cat <<'AGENTINIT_TPL'
-- Never work in the main checkout; it is the user's and stays on `{{DEFAULT_BRANCH}}`. Do every task, even a solo one, in its own worktree: `git worktree add ../<repo>-<task> -b <task>`. If `git rev-parse --git-dir` lacks `/worktrees/`, you are in the main checkout: create a worktree before changing anything.
-- Never commit to `{{DEFAULT_BRANCH}}`. Push your branch and open a PR into `{{DEFAULT_BRANCH}}`; do not merge it unless told to.
-- Never touch another agent's worktree. Once your PR merges, `git worktree remove` yours and delete its branch.
 AGENTINIT_TPL
     ;;
     code) cat <<'AGENTINIT_TPL'
@@ -283,6 +269,18 @@ AGENTINIT_TPL
 - Otherwise as JavaScript: ES modules, `const` by default, `async`/`await` with every rejection handled, Prettier and ESLint clean.
 AGENTINIT_TPL
     ;;
+    mode-build) cat <<'AGENTINIT_TPL'
+- Build mode (initial development, one agent at a time): work in the main checkout on `{{DEFAULT_BRANCH}}` and commit finished work straight to it. No worktrees, branches, or PRs, even if your harness defaults to branching first.
+AGENTINIT_TPL
+    ;;
+    mode-iterate) cat <<'AGENTINIT_TPL'
+- Iterate mode: every task that changes files gets its own worktree and branch, even a one-line fix, even with no other agent running. The main checkout is the user's and stays on `{{DEFAULT_BRANCH}}`: never edit, commit, or switch branches in it.
+- Before the first edit, create the worktree with your harness's worktree tool if it has one (Claude Code: `EnterWorktree`); otherwise run `git worktree add .worktrees/<task> -b <task> {{DEFAULT_BRANCH}}` and `cd` into it. A new branch always means a new worktree, never `git checkout -b` or `git switch` in the main checkout.
+- From then on, every path you read, edit, or run is inside the worktree. If `git rev-parse --git-dir` lacks `/worktrees/`, you are in the main checkout: stop and move.
+- Never commit to `{{DEFAULT_BRANCH}}`. Push your branch and open a PR into `{{DEFAULT_BRANCH}}`; do not merge it unless told to.
+- Never touch another agent's worktree. Once your PR merges, `git worktree remove` yours and delete its branch.
+AGENTINIT_TPL
+    ;;
     pointer-claude) cat <<'AGENTINIT_TPL'
 Edit AGENTS.md, not this file.
 
@@ -330,10 +328,11 @@ yn() {
   esac
 }
 
-branch_mode() {
+mode() {
   case "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" in
-    e|early) echo early ;;
-    *) yn "$1" ;;
+    b|build) echo build ;;
+    i|iterate) echo iterate ;;
+    *) die "expected build or iterate, got '$1'" ;;
   esac
 }
 
@@ -404,13 +403,41 @@ detect_default_branch() {
   printf 'master'
 }
 
+# Fill any setting not given as a flag from the settings line a previous run
+# saved in AGENTS.md, so a re-run changes only what it is told to.
+load_settings() {
+  local f="$TARGET/AGENTS.md" line kv key val kvs=()
+  [ -f "$f" ] || return 0
+  line=$(sed -n "s/^$SETTINGS_MARK \(.*\) -->\$/\1/p" "$f" | head -n 1)
+  if [ -z "$line" ]; then
+    grep -q "$BEGIN_MARK" "$f" &&
+      log "AGENTS.md predates saved settings; settings without a flag get prompts or defaults this once"
+    return 0
+  fi
+  IFS=';' read -r -a kvs <<<"$line"
+  for kv in "${kvs[@]}"; do
+    kv=$(printf '%s' "$kv" | sed 's/^ *//; s/ *$//')
+    key=${kv%%=*}; val=${kv#*=}
+    case "$key" in
+      mode) [ -n "$MODE" ] || MODE=$(mode "$val") ;;
+      attribution) [ -n "$ATTRIBUTION" ] || ATTRIBUTION=$(yn "$val") ;;
+      default-branch) [ -n "$DEFAULT_BRANCH" ] || DEFAULT_BRANCH=$val ;;
+      tracker) [ -n "$TRACKER" ] || TRACKER=$(tracker "$val") ;;
+      langs) [ -n "$LANGS" ] || LANGS=$val ;;
+    esac
+  done
+  [ "$STDOUT" = 1 ] || log "reusing settings saved in AGENTS.md; flags override them"
+}
+
 # --- generation --------------------------------------------------------------
 managed_block() {
   local id
   printf '%s v%s. Re-running agentinit replaces this block; edit outside the markers. -->\n' \
     "$BEGIN_MARK" "$AGENTINIT_VERSION"
+  printf '%s mode=%s; attribution=%s; default-branch=%s; tracker=%s; langs=%s -->\n' \
+    "$SETTINGS_MARK" "$MODE" "$ATTRIBUTION" "$DEFAULT_BRANCH" "$TRACKER" "${LANGS:-none}"
   tpl workflow
-  tpl "branches-$BRANCHES" | sed "s|{{DEFAULT_BRANCH}}|$DEFAULT_BRANCH|g"
+  tpl "mode-$MODE" | sed "s|{{DEFAULT_BRANCH}}|$DEFAULT_BRANCH|g"
   tpl "attribution-$ATTRIBUTION"
   printf '\n'
   case "$TRACKER" in
@@ -485,6 +512,62 @@ check_other_rules() {
   return 0
 }
 
+# Iterate mode keeps worktrees inside the project, where agent sandboxes allow
+# writes; ignore them so the main checkout stays clean.
+ignore_worktrees() {
+  local f="$TARGET/.gitignore" dir
+  [ "$MODE" = iterate ] || return 0
+  # .claude/worktrees is where Claude Code's own worktree tool puts them.
+  for dir in .worktrees/ .claude/worktrees/; do
+    if [ -f "$f" ]; then
+      grep -Fqx -e "$dir" -e "/$dir" -e "${dir%/}" -e "/${dir%/}" "$f" && continue
+      [ -z "$(tail -c 1 "$f")" ] || printf '\n' >>"$f"
+    fi
+    printf '%s\n' "$dir" >>"$f"
+    log "added $dir to .gitignore"
+  done
+}
+
+# Claude Code appends its own Co-Authored-By trailer and PR footer unless its
+# settings turn them off; an instruction in AGENTS.md alone does not reliably
+# beat that default.
+claude_attribution() {
+  local f="$TARGET/.claude/settings.json" off='{"commit":"","pr":""}' tmp
+  if [ "$ATTRIBUTION" = no ]; then
+    if [ ! -e "$f" ]; then
+      mkdir -p "$TARGET/.claude"
+      printf '{\n  "attribution": {\n    "commit": "",\n    "pr": ""\n  }\n}\n' >"$f"
+      log "created .claude/settings.json to turn off Claude Code's attribution"
+      return 0
+    fi
+    if ! command -v jq >/dev/null; then
+      grep -q '"attribution"' "$f" ||
+        log "add \"attribution\": $off to .claude/settings.json to turn off Claude Code's attribution"
+      return 0
+    fi
+    jq -e --argjson off "$off" '.attribution == $off' "$f" >/dev/null 2>&1 && return 0
+    tmp=$(mktemp)
+    if jq --argjson off "$off" '.attribution = $off' "$f" >"$tmp" 2>/dev/null; then
+      cat "$tmp" >"$f"
+      log "turned off Claude Code's attribution in .claude/settings.json"
+    else
+      log "could not parse .claude/settings.json; add \"attribution\": $off to it"
+    fi
+    rm -f "$tmp"
+  elif [ -f "$f" ] && command -v jq >/dev/null &&
+    jq -e --argjson off "$off" '.attribution == $off' "$f" >/dev/null 2>&1; then
+    tmp=$(mktemp)
+    jq 'del(.attribution)' "$f" >"$tmp"
+    if [ "$(jq -c . "$tmp")" = '{}' ]; then
+      rm -f "$f"; rmdir "$TARGET/.claude" 2>/dev/null || true
+    else
+      cat "$tmp" >"$f"
+    fi
+    rm -f "$tmp"
+    log "restored Claude Code's default attribution"
+  fi
+}
+
 # --- main --------------------------------------------------------------------
 need_arg() { [ $# -ge 2 ] || die "$1 requires a value"; }
 while [ $# -gt 0 ]; do
@@ -493,8 +576,8 @@ while [ $# -gt 0 ]; do
     -y|--yes) ASSUME_YES=1 ;;
     --attribution) need_arg "$@"; ATTRIBUTION=$(yn "$2"); shift ;;
     --attribution=*) ATTRIBUTION=$(yn "${1#*=}") ;;
-    --branches) need_arg "$@"; BRANCHES=$(branch_mode "$2"); shift ;;
-    --branches=*) BRANCHES=$(branch_mode "${1#*=}") ;;
+    --mode) need_arg "$@"; MODE=$(mode "$2"); shift ;;
+    --mode=*) MODE=$(mode "${1#*=}") ;;
     --tracker) need_arg "$@"; TRACKER=$(tracker "$2"); shift ;;
     --tracker=*) TRACKER=$(tracker "${1#*=}") ;;
     --default-branch) need_arg "$@"; DEFAULT_BRANCH="$2"; shift ;;
@@ -513,15 +596,13 @@ done
 
 [ -d "$TARGET" ] || die "not a directory: $TARGET"
 [ "$STDOUT" = 1 ] || log "v$AGENTINIT_VERSION in $(cd "$TARGET" && pwd)"
+load_settings
 
 [ -n "$ATTRIBUTION" ] || ATTRIBUTION=$(yn "$(ask "Keep AI attribution (Co-Authored-By) in commits? (y/n)" no)")
-[ -n "$BRANCHES" ] || BRANCHES=$(branch_mode "$(ask "Branch workflow: yes (branch + PR per task), early (push straight to the default branch during initial development), no (current branch only)" yes)")
-if [ -z "$DEFAULT_BRANCH" ]; then
-  DEFAULT_BRANCH=$(detect_default_branch)
-  [ "$BRANCHES" = no ] || DEFAULT_BRANCH=$(ask "Default branch" "$DEFAULT_BRANCH")
-fi
+[ -n "$MODE" ] || MODE=$(mode "$(ask "Mode: build (commit straight to the default branch) or iterate (worktree, branch, and PR per task)" iterate)")
+[ -n "$DEFAULT_BRANCH" ] || DEFAULT_BRANCH=$(ask "Default branch" "$(detect_default_branch)")
 [ -n "$TRACKER" ] || TRACKER=$(tracker "$(ask "Task tracker agents keep updated: github (issues), none, or another tracker's MCP name (e.g. Trackstar)" github)")
-if [ "$LANGS" = auto ]; then
+if [ -z "$LANGS" ] || [ "$LANGS" = auto ]; then
   LANGS=$(detect_langs)
   LANGS=$(ask "Languages (comma-separated ids, 'none' to skip; --list-langs for all)" "${LANGS:-none}")
 fi
@@ -537,5 +618,7 @@ fi
 write_agents
 write_pointer CLAUDE.md pointer-claude '^@AGENTS\.md' '@AGENTS.md'
 write_pointer GEMINI.md pointer-gemini 'AGENTS\.md' 'Read and follow AGENTS.md'
+ignore_worktrees
+claude_attribution
 check_other_rules
 log "done. Fill in the Project section of AGENTS.md; it is what agents read first."

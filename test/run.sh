@@ -15,14 +15,20 @@ run() { bash "$script" "$@" </dev/null 2>"$tmp/log" || { cat "$tmp/log" >&2; fai
 # Fresh project with auto-detection
 p="$tmp/p1"; mkdir -p "$p/src" "$p/node_modules/x"
 touch "$p/go.mod" "$p/src/main.py" "$p/node_modules/x/index.js"
-run -y -C "$p" --attribution no --branches yes --default-branch main
+run -y -C "$p" --attribution no --mode iterate --default-branch main
 has "$p/AGENTS.md" '^### Go' "Go detected"
 has "$p/AGENTS.md" '^### Python' "Python detected"
 lacks "$p/AGENTS.md" '^### JavaScript' "node_modules pruned"
 has "$p/AGENTS.md" 'No AI attribution' "attribution off"
-has "$p/AGENTS.md" 'PR into `main`' "branch workflow"
-has "$p/AGENTS.md" 'git worktree add' "worktree per task"
-has "$p/AGENTS.md" 'Never work in the main checkout' "main checkout off limits"
+has "$p/AGENTS.md" 'PR into `main`' "iterate mode opens PRs"
+has "$p/AGENTS.md" 'git worktree add .worktrees/' "worktree per task, inside the project"
+has "$p/AGENTS.md" 'never `git checkout -b`' "branches only via worktrees"
+has "$p/AGENTS.md" 'main checkout is the user' "main checkout off limits"
+has "$p/AGENTS.md" 'agentinit:settings mode=iterate; attribution=no; default-branch=main;' "settings saved"
+has "$p/.gitignore" '^\.worktrees/$' "worktrees ignored"
+has "$p/.gitignore" '^\.claude/worktrees/$' "Claude Code worktrees ignored"
+has "$p/.claude/settings.json" '"commit": ""' "Claude Code commit attribution off"
+has "$p/.claude/settings.json" '"pr": ""' "Claude Code PR attribution off"
 has "$p/AGENTS.md" 'GitHub issue' "tracker defaults to GitHub issues"
 has "$p/CLAUDE.md" '^@AGENTS.md$' "CLAUDE.md imports AGENTS.md"
 has "$p/GEMINI.md" 'AGENTS.md' "GEMINI.md points at AGENTS.md"
@@ -30,16 +36,42 @@ has "$p/GEMINI.md" 'AGENTS.md' "GEMINI.md points at AGENTS.md"
 # Re-run: user edits survive, options change, markers stay unique
 sed -i.bak 's/Purpose: TODO/Purpose: Widgets/' "$p/AGENTS.md" && rm "$p/AGENTS.md.bak"
 echo "- Trailing custom note" >>"$p/AGENTS.md"
-run -y -C "$p" --attribution yes --branches no --langs rust,shell
+run -y -C "$p" --langs none
+[ "$(grep -c 'worktrees/$' "$p/.gitignore")" = 2 ] || fail "gitignore entries duplicated"; ok
+run -y -C "$p" --attribution yes --mode build --langs rust,shell
 has "$p/AGENTS.md" 'Purpose: Widgets' "Project edit preserved"
 has "$p/AGENTS.md" 'Trailing custom note' "content after end marker preserved"
 has "$p/AGENTS.md" 'Co-Authored-By' "attribution on"
-has "$p/AGENTS.md" 'no branches or PRs unless asked' "branch workflow off"
+has "$p/AGENTS.md" 'commit finished work straight to it' "build mode commits directly"
+has "$p/AGENTS.md" 'on `main`' "saved default branch reused"
+lacks "$p/AGENTS.md" 'PR into' "build mode drops PRs"
 has "$p/AGENTS.md" '^### Rust' "explicit langs applied"
 lacks "$p/AGENTS.md" '^### Go' "old langs removed"
-lacks "$p/AGENTS.md" 'git worktree' "no worktrees without branches"
+lacks "$p/AGENTS.md" 'git worktree' "build mode drops worktrees"
+if command -v jq >/dev/null; then
+  [ ! -e "$p/.claude/settings.json" ] || fail "attribution override removed"; ok
+fi
 [ "$(grep -c 'agentinit:begin' "$p/AGENTS.md")" = 1 ] || fail "duplicate begin marker"; ok
 [ "$(grep -c 'agentinit:end' "$p/AGENTS.md")" = 1 ] || fail "duplicate end marker"; ok
+
+# Toggling the mode alone keeps every other saved setting
+run -C "$p" --mode iterate
+has "$p/AGENTS.md" 'agentinit:settings mode=iterate; attribution=yes; default-branch=main; tracker=github; langs=rust,shell' "toggle keeps settings"
+has "$p/AGENTS.md" 'PR into `main`' "toggled to iterate"
+has "$p/AGENTS.md" '^### Rust' "toggle keeps langs"
+run -C "$p" --mode build
+has "$p/AGENTS.md" 'mode=build; attribution=yes' "toggled back to build"
+
+# Existing Claude Code settings are merged, not replaced
+if command -v jq >/dev/null; then
+  p="$tmp/p8"; mkdir -p "$p/.claude"
+  printf '{"model": "opus", "attribution": {"commit": "Co-Authored-By: x"}}\n' >"$p/.claude/settings.json"
+  run -y -C "$p" --langs none --attribution no
+  [ "$(jq -c . "$p/.claude/settings.json")" = '{"model":"opus","attribution":{"commit":"","pr":""}}' ] ||
+    fail "settings.json merged"; ok
+  run -y -C "$p" --langs none --attribution yes
+  [ "$(jq -c . "$p/.claude/settings.json")" = '{"model":"opus"}' ] || fail "attribution override removed, rest kept"; ok
+fi
 
 # Existing files: foreign AGENTS.md is appended to, foreign pointers are left alone
 p="$tmp/p2"; mkdir -p "$p"
@@ -78,12 +110,11 @@ git -C "$p" -c user.name=t -c user.email=t@t commit -q --allow-empty -m init
 bash "$script" -y -C "$p" --langs none --stdout </dev/null >"$tmp/out"
 has "$tmp/out" 'PR into `trunk`' "default branch detected from git"
 
-# Early mode pushes straight to the default branch, still with worktrees
-bash "$script" -y -C "$p" --branches early --langs none --stdout </dev/null >"$tmp/out"
-has "$tmp/out" 'pushed straight to `trunk`' "early mode targets default branch"
-has "$tmp/out" 'HEAD:trunk' "early mode worktrees push to default branch"
-lacks "$tmp/out" 'Never commit to' "early mode drops PR rule"
-has "$tmp/out" 'Never work in the main checkout' "early mode keeps main checkout off limits"
+# Build mode commits straight to the default branch in the main checkout
+bash "$script" -y -C "$p" --mode build --langs none --stdout </dev/null >"$tmp/out"
+has "$tmp/out" 'main checkout on `trunk`' "build mode targets default branch"
+lacks "$tmp/out" 'Never commit to' "build mode drops PR rule"
+lacks "$tmp/out" 'worktree add' "build mode drops worktrees"
 
 # Tracker: a custom MCP-backed tracker by name, or none
 bash "$script" -y -C "$p" --tracker Trackstar --langs none --stdout </dev/null >"$tmp/out"
@@ -115,5 +146,6 @@ done; ok
 # Bad input fails
 ! bash "$script" -y -C "$p" --langs cobol </dev/null 2>/dev/null || fail "unknown lang accepted"; ok
 ! bash "$script" -y -C "$p" --attribution maybe </dev/null 2>/dev/null || fail "bad yes/no accepted"; ok
+! bash "$script" -y -C "$p" --mode maybe </dev/null 2>/dev/null || fail "bad mode accepted"; ok
 
 echo "ok: $n checks passed ($script)"
